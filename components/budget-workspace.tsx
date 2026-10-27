@@ -24,6 +24,18 @@ export default function BudgetWorkspace() {
     return () => { active = false; };
   }, [attempt]);
 
+  useEffect(() => {
+    try {
+      const remembered = localStorage.getItem("centsible-budget-view");
+      if (remembered === "custom" || remembered === "monthly") setView(remembered);
+    } catch {}
+  }, []);
+
+  function changeView(value: string) {
+    setView(value);
+    try { localStorage.setItem("centsible-budget-view", value); } catch {}
+  }
+
   async function confirmCurrency(event: React.FormEvent) {
     event.preventDefault();
     if (saving) return;
@@ -46,20 +58,44 @@ export default function BudgetWorkspace() {
   </form>;
 
   return <>
-    <div className="max-w-screen-xl mx-auto px-4 flex flex-wrap items-center justify-between gap-3 my-4">
-      <div className="flex gap-3" role="group" aria-label="Budget view">
+    <div className="max-w-screen-xl mx-auto px-4 my-4">
+      <div className="flex flex-wrap items-center justify-between gap-x-6 border-b border-neutral-700">
+      <div className="flex gap-6" role="tablist" aria-label="Budget view">
         {[["monthly", "Monthly budget"], ["custom", "Custom budgets"]].map(([value, label]) => (
-          <button key={value} aria-pressed={view === value} onClick={() => setView(value)} className={`px-4 py-2 rounded-lg text-sm ${view === value ? "bg-sky-600" : "bg-neutral-800"}`}>{label}</button>
+          <button
+            key={value}
+            type="button"
+            role="tab"
+            id={`budget-tab-${value}`}
+            aria-controls={`budget-panel-${value}`}
+            aria-selected={view === value}
+            tabIndex={view === value ? 0 : -1}
+            onClick={() => changeView(value)}
+            onKeyDown={(event) => {
+              if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+              event.preventDefault();
+              const next = event.key === "Home" ? "monthly" : event.key === "End" ? "custom" : value === "monthly" ? "custom" : "monthly";
+              changeView(next);
+              document.getElementById(`budget-tab-${next}`)?.focus();
+            }}
+            className={`-mb-px border-b-2 px-1 py-3 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500 ${view === value ? "border-sky-500 text-sky-400" : "border-transparent text-neutral-400 hover:text-white"}`}
+          >{label}</button>
         ))}
       </div>
-      <div className="text-sm text-neutral-400 flex items-center gap-2">
+      <div className="text-sm text-neutral-400 flex items-center gap-2 py-3">
         <span>Default currency: {settings.currency}</span>
         <span className="relative group">
           <button type="button" aria-label="About your default currency" aria-describedby="currency-help" className="border border-neutral-500 rounded-full w-5 h-5 text-xs focus-visible:outline focus-visible:outline-sky-500">?</button>
           <span id="currency-help" role="tooltip" className="hidden group-hover:block group-focus-within:block absolute right-0 top-full mt-2 w-64 p-3 rounded-lg bg-neutral-800 border border-neutral-600 text-neutral-200 shadow-lg z-20">Your default currency can’t be changed once set. To track expenses in another currency, create a custom budget and choose its currency.</span>
         </span>
       </div>
+      </div>
     </div>
-    {view === "monthly" ? <BudgetContainer currency={settings.currency} /> : <CustomBudgets defaultCurrency={settings.currency} />}
+    <div id="budget-panel-monthly" role="tabpanel" aria-labelledby="budget-tab-monthly" hidden={view !== "monthly"} tabIndex={0}>
+      {view === "monthly" && <BudgetContainer currency={settings.currency} />}
+    </div>
+    <div id="budget-panel-custom" role="tabpanel" aria-labelledby="budget-tab-custom" hidden={view !== "custom"} tabIndex={0}>
+      {view === "custom" && <CustomBudgets defaultCurrency={settings.currency} />}
+    </div>
   </>;
 }

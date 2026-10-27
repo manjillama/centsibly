@@ -14,8 +14,16 @@ const requireUserBudget = async (id: string, userId: string) => {
   return budget;
 };
 
-const getUserBudgets = async (userId: string) =>
-  Budget.find({ user: userId }).sort({ createdAt: -1 }).lean();
+const getUserBudgets = async (userId: string) => {
+  const budgets = await Budget.find({ user: userId }).sort({ createdAt: -1 }).lean();
+  const expenses = await Transaction.find({ user: userId, budget: { $in: budgets.map((budget) => budget._id) }, category: { $ne: "Income" } }).select("budget amount").lean();
+  const totals = new Map<string, number>();
+  expenses.forEach((entry) => {
+    const id = String(entry.budget);
+    totals.set(id, (totals.get(id) || 0) + Number(entry.amount));
+  });
+  return budgets.map((budget) => ({ ...budget, spent: totals.get(String(budget._id)) || 0 }));
+};
 
 const createBudget = async (name: unknown, userId: string, currency: unknown = "USD") => {
   if (typeof name !== "string" || !name.trim() || name.trim().length > 100)
@@ -38,4 +46,20 @@ const renameBudget = async (id: string, name: unknown, userId: string) => {
   return budget.save();
 };
 
-export default { requireUserBudget, getUserBudgets, createBudget, getBudgetTransactions, renameBudget };
+const setBudgetTarget = async (id: string, target: unknown, userId: string) => {
+  if (target !== null && (typeof target !== "number" || !Number.isFinite(target) || target <= 0))
+    throw new AppError("Enter a target greater than zero", StatusCodes.BAD_REQUEST);
+  const budget = await requireUserBudget(id, userId);
+  budget.target = target as number | null;
+  return budget.save();
+};
+
+const setBudgetArchived = async (id: string, archived: unknown, userId: string) => {
+  if (typeof archived !== "boolean")
+    throw new AppError("Choose a valid archive status", StatusCodes.BAD_REQUEST);
+  const budget = await requireUserBudget(id, userId);
+  budget.archived = archived;
+  return budget.save();
+};
+
+export default { setBudgetArchived, setBudgetTarget, requireUserBudget, getUserBudgets, createBudget, getBudgetTransactions, renameBudget };

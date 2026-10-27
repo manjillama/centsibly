@@ -91,7 +91,7 @@ export default function MonthlyBudget({
               <MonthlyBudgetItem
                 transaction={transaction}
                 currency={currency}
-                key={i}
+                key={transaction._id}
               />
             ))}
         </div>

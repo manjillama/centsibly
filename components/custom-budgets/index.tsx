@@ -12,6 +12,9 @@ import DownloadTransactionsCsv from "../download-transactions-csv";
 import MonthlyChart from "../monthly-chart";
 
 export default function CustomBudgets({ defaultCurrency = "USD" }: { defaultCurrency?: string }) {
+  const [search, setSearch] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
+  const [archiveSaving, setArchiveSaving] = useState(false);
   const [newCurrency, setNewCurrency] = useState(defaultCurrency);
   const [budgets, setBudgets] = useState<IBudget[]>([]);
   const [selected, setSelected] = useState("");
@@ -24,6 +27,10 @@ export default function CustomBudgets({ defaultCurrency = "USD" }: { defaultCurr
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [renameSaving, setRenameSaving] = useState(false);
+  const [titleSaved, setTitleSaved] = useState(false);
+  const [targetSaved, setTargetSaved] = useState(false);
+  const [targetSaving, setTargetSaving] = useState(false);
+  const [targetError, setTargetError] = useState("");
   const [renameError, setRenameError] = useState("");
 
   useEffect(() => {
@@ -32,7 +39,10 @@ export default function CustomBudgets({ defaultCurrency = "USD" }: { defaultCurr
       if (!active) return;
       if (response.status === "success") {
         setBudgets(response.data);
-        if (response.data.length) setSelected(response.data[0]._id);
+        let remembered = "";
+        try { remembered = localStorage.getItem("centsible-selected-budget") || ""; } catch {}
+        const initial = response.data.find((budget) => budget._id === remembered) || response.data.find((budget) => !budget.archived) || response.data[0];
+        if (initial) { setSelected(initial._id); setShowArchived(!!initial.archived); }
       }
       else setError(response.message);
       setLoading(false);
@@ -41,7 +51,10 @@ export default function CustomBudgets({ defaultCurrency = "USD" }: { defaultCurr
   }, []);
 
   useEffect(() => {
+    setTitleSaved(false);
+    setTargetSaved(false);
     setRenameError("");
+    setTargetError("");
     if (!selected) return;
     let active = true;
     setTransactions(null);
@@ -54,6 +67,35 @@ export default function CustomBudgets({ defaultCurrency = "USD" }: { defaultCurr
     return () => { active = false; };
   }, [selected]);
 
+  useEffect(() => {
+    if (selected) {
+      try { localStorage.setItem("centsible-selected-budget", selected); } catch {}
+    }
+  }, [selected]);
+
+  function changeArchiveView(archived: boolean) {
+    setShowArchived(archived);
+    setTransactions(null);
+    setSelected(budgets.find((budget) => !!budget.archived === archived)?._id || "");
+  }
+
+  async function toggleArchive() {
+    if (archiveSaving) return;
+    const budgetId = selected;
+    const archived = !budgets.find((budget) => budget._id === budgetId)?.archived;
+    setArchiveSaving(true);
+    setError("");
+    const response = await api.put<IBudget>(`/api/budgets/${budgetId}`, { archived }, "PATCH");
+    if (response.status === "success") {
+      setBudgets((current) => current.map((budget) => budget._id === budgetId ? { ...budget, ...response.data } : budget));
+      if (selectedRef.current === budgetId) {
+        setTransactions(null);
+        setSelected(budgets.find((budget) => budget._id !== budgetId && !!budget.archived === showArchived)?._id || "");
+      }
+    } else setError(response.message);
+    setArchiveSaving(false);
+  }
+
   async function createBudget(event: React.FormEvent) {
     event.preventDefault();
     if (saving) return;
@@ -62,6 +104,8 @@ export default function CustomBudgets({ defaultCurrency = "USD" }: { defaultCurr
     const response = await api.post<IBudget>("/api/budgets", { name, currency: newCurrency });
     if (response.status === "success") {
       setBudgets((current) => [response.data, ...current]);
+      setShowArchived(false);
+      setSearch("");
       setSelected(response.data._id);
       setName("");
       setCreating(false);
@@ -89,30 +133,71 @@ export default function CustomBudgets({ defaultCurrency = "USD" }: { defaultCurr
       return;
     }
     const budgetId = selected;
+    setTitleSaved(false);
     setRenameSaving(true);
     setRenameError("");
     const response = await api.put<IBudget>(`/api/budgets/${budgetId}`, { name });
     if (response.status === "success") {
-      setBudgets((current) => current.map((budget) => budget._id === budgetId ? response.data : budget));
+      setBudgets((current) => current.map((budget) => budget._id === budgetId ? { ...budget, ...response.data } : budget));
+      if (selectedRef.current === budgetId) setTitleSaved(true);
     } else if (selectedRef.current === budgetId) {
-      input.value = currentName;
       setRenameError(response.message);
     }
     setRenameSaving(false);
+  }
+
+  async function deleteTransaction(id: string) {
+    const budgetId = selected;
+    const response = await api.remove(`/api/transactions/${id}`);
+    if (response.status !== "success") throw new Error(response.message);
+    if (selectedRef.current === budgetId)
+      setTransactions((current) => current?.filter((item) => item._id !== id) || null);
+  }
+
+  async function saveTarget(event: React.FocusEvent<HTMLInputElement>) {
+    const input = event.currentTarget;
+    const previous = budgets.find((budget) => budget._id === selected)?.target ?? null;
+    const visibleBudgets = budgets.filter((budget) => !!budget.archived === showArchived && budget.name.toLowerCase().includes(search.trim().toLowerCase()));
+  const target = input.value.trim() === "" ? null : Number(input.value);
+    if (targetSaving || target === previous) return;
+    if (target !== null && (!Number.isFinite(target) || target <= 0)) {
+      input.value = previous?.toString() || "";
+      setTargetError("Enter a target greater than zero");
+      return;
+    }
+    const budgetId = selected;
+    setTargetSaved(false);
+    setTargetSaving(true);
+    setTargetError("");
+    const response = await api.put<IBudget>(`/api/budgets/${budgetId}`, { target }, "PATCH");
+    if (response.status === "success") {
+      setBudgets((current) => current.map((budget) => budget._id === budgetId ? { ...budget, ...response.data } : budget));
+      if (selectedRef.current === budgetId) setTargetSaved(true);
+    } else if (selectedRef.current === budgetId) {
+      setTargetError(response.message);
+    }
+    setTargetSaving(false);
   }
 
   async function updateTransaction(transaction: ITransaction) {
     const budgetId = selected;
     const response = await api.put<ITransaction>(`/api/transactions/${transaction._id}`, transaction);
     if (selectedRef.current !== budgetId) return;
-    if (response.status !== "success") { setError(response.message); return; }
+    if (response.status !== "success") throw new Error(response.message);
     setError("");
     setTransactions((current) => current?.map((item) => item._id === transaction._id ? response.data : item) || null);
   }
 
+  const visibleBudgets = budgets.filter((budget) => !!budget.archived === showArchived && budget.name.toLowerCase().includes(search.trim().toLowerCase()));
+  const target = budgets.find((budget) => budget._id === selected)?.target;
   const currency = budgets.find((budget) => budget._id === selected)?.currency || "USD";
   const expense = transactions?.reduce((total, item) => total + (item.category !== CategoryType.Income ? Number(item.amount) : 0), 0) || 0;
   const income = transactions?.reduce((total, item) => total + (item.category === CategoryType.Income ? Number(item.amount) : 0), 0) || 0;
+  useEffect(() => {
+    if (transactions === null) return;
+    setBudgets((current) => current.map((budget) => budget._id === selected ? { ...budget, spent: expense } : budget));
+  }, [selected, transactions, expense]);
+
   const expenseChart = useMemo(() => {
     const totals = new Map<string, number>();
     transactions?.forEach((transaction) => {
@@ -127,7 +212,7 @@ export default function CustomBudgets({ defaultCurrency = "USD" }: { defaultCurr
   }, [transactions]);
 
   return (
-    <section className="max-w-screen-xl mx-auto px-4 py-6 text-sm">
+    <section className="max-w-screen-xl mx-auto px-4 pb-6 text-sm">
       <div className="flex flex-wrap justify-between items-start gap-4 mb-6">
         <div>
           <h2 className="text-xl font-semibold">Custom budgets</h2>
@@ -158,11 +243,16 @@ export default function CustomBudgets({ defaultCurrency = "USD" }: { defaultCurr
         <div className="grid grid-cols-1 lg:grid-cols-[220px_minmax(0,1fr)] gap-6 items-start">
           <nav aria-label="Your custom budgets" className="border border-neutral-700 rounded-xl p-3">
             <h3 className="px-3 py-2 text-xs uppercase tracking-wide text-neutral-400">Your budgets</h3>
-            <div className="flex lg:flex-col gap-1 overflow-x-auto">
-              {budgets.map((budget) => <button key={budget._id} aria-pressed={selected === budget._id} onClick={() => { if (selected !== budget._id) { setTransactions(null); setSelected(budget._id); } }} className={`text-left px-3 py-3 rounded-lg break-words shrink-0 lg:shrink ${selected === budget._id ? "bg-sky-600/20 text-sky-300" : "text-neutral-300 hover:bg-neutral-800"}`}>{budget.name} <span className="text-xs opacity-70">{budget.currency || "USD"}</span></button>)}
+            <div className="flex gap-1 px-1 mb-2" role="group" aria-label="Budget archive filter">
+              {[false, true].map((archived) => <button key={String(archived)} type="button" aria-pressed={showArchived === archived} onClick={() => changeArchiveView(archived)} className={`flex-1 rounded-md px-2 py-2 text-xs ${showArchived === archived ? "bg-neutral-700 text-white" : "text-neutral-400"}`}>{archived ? "Archived" : "Active"} ({budgets.filter((budget) => !!budget.archived === archived).length})</button>)}
+            </div>
+            <input type="search" aria-label="Search budgets by title" placeholder="Search by title…" value={search} onChange={(event) => setSearch(event.target.value)} className="w-full min-w-0 mb-2" />
+            <div className="flex flex-col gap-1 max-h-64 lg:max-h-[60vh] overflow-y-auto overscroll-contain">
+              {visibleBudgets.length === 0 && <p className="px-3 py-4 text-neutral-400">{search.trim() ? "No matching budgets." : showArchived ? "No archived budgets." : "No active budgets."}</p>}
+              {visibleBudgets.map((budget) => <button key={budget._id} aria-pressed={selected === budget._id} onClick={() => { if (selected !== budget._id) { setTransactions(null); setSelected(budget._id); } }} className={`text-left px-3 py-3 rounded-lg break-words shrink-0 lg:shrink ${selected === budget._id ? "bg-sky-600/20 text-sky-300" : "text-neutral-300 hover:bg-neutral-800"}`}>{budget.name} <span className="text-xs opacity-70">{budget.currency || "USD"}</span>{budget.target ? <span className="block text-xs mt-1 opacity-80">{formatCurrency(budget.currency || "USD")}{Math.abs(budget.target - (budget._id === selected && transactions !== null ? expense : budget.spent || 0)).toFixed(2)} {budget.target < (budget._id === selected && transactions !== null ? expense : budget.spent || 0) ? "over target" : "left"}</span> : null}</button>)}
             </div>
           </nav>
-          <div className="min-w-0" key={selected}>
+          {!selected ? <p className="text-neutral-400 p-5">{showArchived ? "Archived budgets will appear here. You can restore them anytime." : "Select a budget or create a new one."}</p> : <div className="min-w-0" key={selected}>
             <div className="border border-neutral-700 rounded-xl p-5 mb-5">
               <div className="flex justify-between items-start gap-4">
                 <div className="min-w-0 grow">
@@ -180,9 +270,17 @@ export default function CustomBudgets({ defaultCurrency = "USD" }: { defaultCurr
                       className="w-full min-w-0 rounded-md"
                     />
                   </h3>
-                  {renameError && <p role="alert" className="text-red-400 mt-2">{renameError}</p>}
+                  <p role="status" className={`text-xs mt-1 ${renameError ? "text-red-400" : "text-neutral-500"}`}>{renameSaving ? "Saving…" : renameError ? `Couldn't save: ${renameError}` : titleSaved ? "Saved" : ""}</p>
                 </div>
+                <div className="flex items-center gap-3 shrink-0">
+                  <button type="button" disabled={archiveSaving} onClick={toggleArchive} title={showArchived ? "Restore budget" : "Archive budget"} aria-label={showArchived ? "Restore budget" : "Archive budget"} aria-busy={archiveSaving} className="flex h-7 w-7 items-center justify-center rounded-md border border-neutral-600 text-neutral-300 hover:bg-neutral-600 disabled:opacity-50">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M3 3h18v4H3zM5 7v14h14V7" />
+                      {showArchived ? <path d="M12 17v-6m-3 3 3-3 3 3" /> : <path d="M9 11h6" />}
+                    </svg>
+                  </button>
                 {transactions !== null && <DownloadTransactionsCsv transactions={transactions} currency={currency} filename={`${(budgets.find((budget) => budget._id === selected)?.name || "budget").replace(/[^a-z0-9_-]+/gi, "-")}-${currency}.csv`} />}
+                </div>
               </div>
               <p className="text-neutral-400 mt-2">Only transactions added here count toward this budget.</p>
               <span className="inline-block mt-3 rounded-full bg-neutral-800 px-3 py-1 text-xs text-neutral-300">{currency} · Separate from monthly budget · All dates</span>
@@ -190,6 +288,22 @@ export default function CustomBudgets({ defaultCurrency = "USD" }: { defaultCurr
                 <div><dt className="text-neutral-400">Total spent</dt><dd className="text-2xl font-semibold mt-1">{formatCurrency(currency)}{expense.toFixed(2)}</dd></div>
                 <div><dt className="text-neutral-400">Total income</dt><dd className="text-2xl font-semibold mt-1">{formatCurrency(currency)}{income.toFixed(2)}</dd></div>
               </dl>}
+              <div className="mt-5 border-t border-neutral-700 pt-4">
+                <label htmlFor="budget-target" className="text-neutral-400">Spending target</label>
+                <div className="flex items-center mt-1">
+                  <span className="text-neutral-500 inline-block">{formatCurrency(currency)}</span>
+                  <div className="-ml-1">
+                    <input id="budget-target" type="text" inputMode="decimal" autoComplete="off" placeholder="Add amount..." defaultValue={target ?? ""} readOnly={targetSaving} onBlur={saveTarget} onFocus={() => setTargetError("")} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} className="w-48" />
+                  </div>
+                </div>
+                <p role="status" className={`text-xs mt-1 ${targetError ? "text-red-400" : "text-neutral-500"}`}>{targetSaving ? "Saving…" : targetError ? `Couldn't save: ${targetError}` : targetSaved ? "Saved" : ""}</p>
+                {target && transactions !== null ? <div className="mt-3">
+                  <div role="progressbar" aria-label="Spending target used" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.min(100, Math.round(expense / target * 100))} className="h-2 rounded-full bg-neutral-800 overflow-hidden">
+                    <div className={`h-full ${expense > target ? "bg-red-500" : "bg-sky-500"}`} style={{ width: `${Math.min(100, Math.max(0, expense / target * 100))}%` }} />
+                  </div>
+                  <p className={`mt-2 ${expense > target ? "text-red-400" : "text-neutral-400"}`}>{formatCurrency(currency)}{Math.abs(target - expense).toFixed(2)} {expense > target ? "over target" : "remaining"} · {Math.round(expense / target * 100)}% used</p>
+                </div> : null}
+              </div>
             </div>
             {transactions === null ? <p>{error ? "Unable to load transactions. Choose another budget and try again." : "Loading transactions..."}</p> : <>
               <div className="border-b border-neutral-700 py-2 mb-6">
@@ -200,7 +314,7 @@ export default function CustomBudgets({ defaultCurrency = "USD" }: { defaultCurr
                 {transactions.length === 0 ? <p className="rounded-xl bg-neutral-800/50 p-6 text-neutral-400">No transactions yet. Add your first expense using the form above.</p> : <>
                   <div className="flex flex-wrap">
                     <div className="lg:w-3/5 w-full lg:mb-0 mb-4">
-                      {transactions.map((transaction) => <MonthlyBudgetItem key={transaction._id} transaction={transaction} currency={currency} onUpdate={updateTransaction} />)}
+                      {transactions.map((transaction) => <MonthlyBudgetItem key={transaction._id} transaction={transaction} currency={currency} onUpdate={updateTransaction} onDelete={deleteTransaction} />)}
                     </div>
                     <div className="lg:w-2/5 w-full min-w-0" role="region" aria-label="Expenses by category">
                       {expenseChart.series.length > 0 ? (
@@ -211,7 +325,7 @@ export default function CustomBudgets({ defaultCurrency = "USD" }: { defaultCurr
                 </>}
               </div>
             </>}
-          </div>
+          </div>}
         </div>
       )}
     </section>

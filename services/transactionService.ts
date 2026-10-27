@@ -72,7 +72,14 @@ const updateTransaction = async (
   return transaction.save();
 };
 
+const deleteTransaction = async (id: string, userId: string) => {
+  const transaction = await Transaction.findOneAndDelete({ _id: id, user: userId });
+  if (!transaction) throw new AppError("Transaction not found", StatusCodes.NOT_FOUND);
+  return transaction;
+};
+
 export default {
+  deleteTransaction,
   getUserTransactionsByYear,
   createTransaction,
   updateTransaction,

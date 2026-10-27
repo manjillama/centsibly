@@ -177,3 +177,82 @@ test('renaming validates titles and only changes the owned budget name', async (
   assert.equal(result.user, 'alice');
   assert.equal(saves, 1);
 });
+
+test('deletion is scoped to the transaction owner', async () => {
+  let deleted = false;
+  const service = load('services/transactionService.ts', { ...base,
+    '@/services/budgetService': {},
+    '@/models/Transaction': { findOneAndDelete: async (filter) => {
+      assert.equal(filter._id, 'entry');
+      if (filter.user !== 'alice') return null;
+      deleted = true;
+      return { _id: 'entry' };
+    } },
+  });
+  await assert.rejects(service.deleteTransaction('entry', 'bob'), /not found/);
+  assert.equal(deleted, false);
+  await service.deleteTransaction('entry', 'alice');
+  assert.equal(deleted, true);
+});
+
+test('budget targets are optional, positive, and owned by the current user', async () => {
+  let saves = 0;
+  const document = { name: 'Trip', currency: 'MXN', target: null, save: async function () { saves++; return this; } };
+  const service = load('services/budgetService.ts', { ...base,
+    mongoose: { isValidObjectId: (id) => id === budgetId },
+    '@/models/Budget': { findOne: async (query) => query.user === 'alice' ? document : null },
+    '@/models/Transaction': {},
+  });
+  for (const target of [undefined, 0, -1, '100', NaN, Infinity])
+    await assert.rejects(service.setBudgetTarget(budgetId, target, 'alice'), /target greater than zero/);
+  await assert.rejects(service.setBudgetTarget(budgetId, 500, 'bob'), /Budget not found/);
+  assert.equal(saves, 0);
+  await service.setBudgetTarget(budgetId, 500, 'alice');
+  assert.equal(document.target, 500);
+  assert.equal(document.name, 'Trip');
+  assert.equal(document.currency, 'MXN');
+  await service.setBudgetTarget(budgetId, null, 'alice');
+  assert.equal(document.target, null);
+  assert.equal(saves, 2);
+});
+
+test('budget sidebar totals use only owned custom expenses', async () => {
+  const service = load('services/budgetService.ts', { ...base,
+    mongoose: {},
+    '@/models/Budget': { find: (filter) => {
+      assert.equal(filter.user, 'alice');
+      return { sort: () => ({ lean: async () => [{ _id: budgetId, target: 100 }, { _id: 'second' }] }) };
+    } },
+    '@/models/Transaction': { find: (filter) => {
+      assert.equal(filter.user, 'alice');
+      assert.equal(filter.category.$ne, 'Income');
+      assert.deepEqual(Array.from(filter.budget.$in), [budgetId, 'second']);
+      return { select: () => ({ lean: async () => [{ budget: budgetId, amount: 20 }, { budget: budgetId, amount: 15.5 }] }) };
+    } },
+  });
+  const budgets = await service.getUserBudgets('alice');
+  assert.equal(budgets[0].spent, 35.5);
+  assert.equal(budgets[1].spent, 0);
+});
+
+test('archiving and restoring preserve budget data and require ownership', async () => {
+  let saves = 0;
+  const document = { name: 'Trip', target: 500, currency: 'MXN', archived: false, save: async function () { saves++; return this; } };
+  const service = load('services/budgetService.ts', { ...base,
+    mongoose: { isValidObjectId: (id) => id === budgetId },
+    '@/models/Budget': { findOne: async (query) => query.user === 'alice' ? document : null },
+    '@/models/Transaction': {},
+  });
+  for (const value of [undefined, null, 'true', 1])
+    await assert.rejects(service.setBudgetArchived(budgetId, value, 'alice'), /archive status/);
+  await assert.rejects(service.setBudgetArchived(budgetId, true, 'bob'), /Budget not found/);
+  assert.equal(saves, 0);
+  await service.setBudgetArchived(budgetId, true, 'alice');
+  assert.equal(document.archived, true);
+  await service.setBudgetArchived(budgetId, false, 'alice');
+  assert.equal(document.archived, false);
+  assert.equal(document.name, 'Trip');
+  assert.equal(document.target, 500);
+  assert.equal(document.currency, 'MXN');
+  assert.equal(saves, 2);
+});

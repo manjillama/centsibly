@@ -11,7 +11,8 @@ const INITIAL_DATA: {
   };
   refreshTransactionData: (year: number) => void;
   addTransaction: (transaction: ITransaction) => void;
-  updateTransaction: (transaction: ITransaction) => void;
+  updateTransaction: (transaction: ITransaction) => Promise<void>;
+  deleteTransaction: (id: string) => Promise<void>;
   changeToPreviousYear: () => void;
   changeToNextYear: () => void;
 } = {
@@ -22,7 +23,8 @@ const INITIAL_DATA: {
   },
   refreshTransactionData: () => {},
   addTransaction: () => {},
-  updateTransaction: () => {},
+  updateTransaction: async () => {},
+  deleteTransaction: async () => {},
   changeToPreviousYear: () => {},
   changeToNextYear: () => {},
 };
@@ -65,27 +67,15 @@ function TransactionProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateTransaction = async (transaction: ITransaction) => {
-    if (transactionData.transactions === null) return;
+    const response = await api.put<ITransaction>(`/api/transactions/${transaction._id}`, transaction);
+    if (response.status !== "success") throw new Error(response.message);
+    setTransactionData((current) => ({ ...current, transactions: current.transactions?.map((item) => item._id === transaction._id ? response.data : item) || null }));
+  };
 
-    const response = await api.put<ITransaction>(
-      `/api/transactions/${transaction._id}`,
-      transaction
-    );
-
-    if (response.status !== "success") return;
-
-    const updatedTransactions = transactionData.transactions.map(
-      (localTransaction) => {
-        if (localTransaction._id === transaction._id)
-          return { ...localTransaction, ...transaction };
-        return localTransaction;
-      }
-    );
-
-    setTransactionData({
-      ...transactionData,
-      transactions: updatedTransactions,
-    });
+  const deleteTransaction = async (id: string) => {
+    const response = await api.remove(`/api/transactions/${id}`);
+    if (response.status !== "success") throw new Error(response.message);
+    setTransactionData((current) => ({ ...current, transactions: current.transactions?.filter((item) => item._id !== id) || null }));
   };
 
   const changeToPreviousYear = () => {
@@ -113,6 +103,7 @@ function TransactionProvider({ children }: { children: React.ReactNode }) {
         refreshTransactionData,
         addTransaction,
         updateTransaction,
+        deleteTransaction,
         changeToPreviousYear,
         changeToNextYear,
       }}

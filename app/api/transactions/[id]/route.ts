@@ -29,3 +29,11 @@ export const PUT = catchAsync(async function (
     data: transaction,
   });
 });
+
+export const DELETE = catchAsync(async (req, { params }: { params: { id: string } }) => {
+  const session = await getServerSession(options);
+  if (!session) throw new AppError("You need to be logged in first", StatusCodes.FORBIDDEN);
+  await dbConnect();
+  await transactionService.deleteTransaction(params.id, session.user.id as string);
+  return Response.json({ status: "success", data: null });
+});

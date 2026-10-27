@@ -50,7 +50,8 @@ async function post<T>(
 
 async function put<T>(
   url: string,
-  data: any
+  data: any,
+  method: "PUT" | "PATCH" = "PUT"
 ): Promise<
   | {
       status: "success";
@@ -60,7 +61,7 @@ async function put<T>(
 > {
   try {
     const response = await fetch(url, {
-      method: "PUT",
+      method,
       headers: {
         Accept: "application.json",
         "Content-Type": "application/json",
@@ -79,7 +80,17 @@ async function put<T>(
   }
 }
 
+async function remove(url: string) {
+  try {
+    const response = await fetch(url, { method: "DELETE" });
+    return await response.json();
+  } catch {
+    return { status: "error", message: "Unable to delete transaction. Please try again." };
+  }
+}
+
 const api = {
+  remove,
   get,
   post,
   put,
