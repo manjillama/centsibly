@@ -7,6 +7,8 @@ export const POST = catchAsync(async function (req: Request) {
 
   const body = await req.json();
   body.provider = "credentials";
+  body.defaultCurrency = "USD";
+  body.currencySetupRequired = true;
 
   const user: any = await User.create(body);
   user.password = undefined;

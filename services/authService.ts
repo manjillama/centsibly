@@ -77,6 +77,7 @@ const handlePostOAuthUserSignIn = async (
     };
   }
   const newUser = await User.create({
+    currencySetupRequired: true,
     email,
     name,
     provider,

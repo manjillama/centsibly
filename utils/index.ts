@@ -30,7 +30,7 @@ export function getNormalizedDate(date: Date) {
 }
 export function formatCurrency(currency: string) {
   if (currency === "USD") return "$";
-  return currency;
+  return `${currency} `;
 }
 export function getValidNumber(amount: number | ""): number {
   return typeof amount === "number" ? amount : 0;

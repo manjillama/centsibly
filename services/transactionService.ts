@@ -2,6 +2,8 @@ import { ITransaction } from "@/interfaces/ITransaction";
 import Transaction from "@/models/Transaction";
 import AppError from "@/utils/appError";
 import { StatusCodes } from "http-status-codes";
+import currencyService from "@/services/currencyService";
+import budgetService from "@/services/budgetService";
 
 const getUserTransactionsByYear = async (
   userId: string,
@@ -14,6 +16,7 @@ const getUserTransactionsByYear = async (
     JSON.stringify(
       await Transaction.find({
         user: userId,
+        budget: null,
         transactionDate: { $gte: startDate, $lte: endDate },
       }).lean()
     )
@@ -21,6 +24,8 @@ const getUserTransactionsByYear = async (
 };
 
 const createTransaction = async (data: ITransaction, userId: string) => {
+  await currencyService.requireCurrency(userId);
+  if (data.budget) await budgetService.requireUserBudget(data.budget, userId);
   const { transactionDate, title, category, amount } = data;
   const transaction = await Transaction.create({
     transactionDate,
@@ -28,9 +33,11 @@ const createTransaction = async (data: ITransaction, userId: string) => {
     category,
     amount,
     user: userId,
+    budget: data.budget || null,
   });
   return {
     _id: transaction._id,
+    budget: transaction.budget,
     transactionDate,
     title,
     category,
@@ -43,6 +50,7 @@ const updateTransaction = async (
   data: ITransaction,
   userId: string
 ) => {
+  await currencyService.requireCurrency(userId);
   let transaction = await Transaction.findOne({
     _id: transactionId,
     user: userId,

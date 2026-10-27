@@ -48,6 +48,8 @@ export const options: NextAuthOptions = {
   },
   providers: [
     GitHubProvider({
+      // Validate the issuer GitHub includes in OAuth callbacks (RFC 9207).
+      issuer: "https://github.com/login/oauth",
       clientId: keys.GITHUB_ID as string,
       clientSecret: keys.GITHUB_SECRET as string,
       async profile({ email, name, avatar_url }) {

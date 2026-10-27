@@ -5,6 +5,12 @@ import { CategoryType } from "@/types";
 
 const transactionSchema = new Schema<ITransactionDocument>(
   {
+    budget: {
+      type: Schema.Types.ObjectId,
+      ref: "Budget",
+      default: null,
+      index: true,
+    },
     user: {
       type: Schema.Types.ObjectId,
       ref: "User",

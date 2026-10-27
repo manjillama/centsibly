@@ -1,4 +1,5 @@
 import { Schema } from "mongoose";
+import { CURRENCIES } from "@/constants/currencies";
 import bcrypt from "bcrypt";
 import {
   AVATAR_BACKGROUND_COLORS,
@@ -9,6 +10,8 @@ import createModel from "@/lib/createModel";
 
 const userSchema = new Schema<IUserDocument>(
   {
+    defaultCurrency: { type: String, enum: CURRENCIES, default: "USD" },
+    currencySetupRequired: { type: Boolean, default: false },
     provider: {
       type: String,
       enum: {

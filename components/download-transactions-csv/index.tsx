@@ -1,57 +1,41 @@
 import { ITransaction } from "@/interfaces/ITransaction";
 import React from "react";
 
-const fileHeaders = ["title", "category", "amount", "date"];
+import transactionsCsv from "@/utils/transactionsCsv";
 
 const DownloadTransactionsCsv = ({
   transactions,
   currentYear,
+  filename,
+  currency,
 }: {
   transactions: ITransaction[];
-  currentYear: number;
+  currentYear?: number;
+  filename?: string;
+  currency?: string;
 }) => {
-  function convertJSONToCSV() {
-    if (transactions.length === 0) {
-      return "";
-    }
-
-    const headers = fileHeaders.join(",") + "\n";
-
-    const rows = transactions
-      .map((row) => {
-        return fileHeaders
-          .map((header) => {
-            if (header === "date") {
-              return (row as any)["transactionDate"].split("T")[0];
-            }
-            return (row as any)[header] || "";
-          })
-          .join(",");
-      })
-      .join("\n");
-
-    return headers + rows;
-  }
-
   function downloadCSV() {
-    const csvData = convertJSONToCSV();
+    const csvData = transactionsCsv(transactions, currency);
 
     if (csvData === "") {
       alert("No data to export");
     } else {
       const blob = new Blob([csvData], { type: "text/csv;charset=utf-8;" });
       const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.setAttribute("download", `transactions-${currentYear}.csv`);
+      const url = URL.createObjectURL(blob);
+      link.href = url;
+      link.setAttribute("download", filename || `transactions-${currentYear}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
   }
 
   return (
     <button
       title="Download CSV"
+      aria-label="Download CSV"
       onClick={downloadCSV}
       type="button"
       className="hover:bg-neutral-600 border-[1px] border-neutral-600 w-[28px] h-[28px] rounded-md"

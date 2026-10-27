@@ -1,5 +1,5 @@
 export const SITE_DATA = {
   name: "Centsibly",
   title: "centsibly",
-  description: "Track and gain insights of your income and spendings.",
+  description: "Track income and expenses, understand your monthly spending, and create separate budgets for trips and projects in the currency you need.",
 };

@@ -22,7 +22,7 @@ export default function BudgetInputForm({
   addTransaction,
 }: {
   currency: string;
-  addTransaction: (transaction: ITransaction) => void;
+  addTransaction: (transaction: ITransaction) => void | Promise<void>;
 }) {
   const [formProps, setFormProps] =
     useState<
@@ -31,6 +31,8 @@ export default function BudgetInputForm({
         "_id" | "title" | "category" | "amount" | "transactionDate"
       >
     >(INITIAL_FORM_PROPS);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
   function handleChange(event: React.FormEvent<HTMLInputElement>) {
     const { name, value } = event.currentTarget;
@@ -45,11 +47,21 @@ export default function BudgetInputForm({
     if (/^\d*\.?\d?$/.test(amount.toString())) return amount;
     return formProps.amount;
   }
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    addTransaction({ ...formProps, amount: Number(formProps.amount) });
-    setFormProps(INITIAL_FORM_PROPS);
+    if (saving) return;
+    setSaving(true);
+    setError("");
+    try {
+      await addTransaction({ ...formProps, amount: Number(formProps.amount) });
+      setFormProps(INITIAL_FORM_PROPS);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Unable to save transaction");
+    } finally {
+      setSaving(false);
+    }
   }
+
 
   return (
     <div className="max-w-screen-xl	mx-auto px-4 pb-1">
@@ -130,12 +142,14 @@ export default function BudgetInputForm({
         <div className="md:w-auto md:mt-0 w-full mt-2">
           <button
             type="submit"
+            disabled={saving}
             className="py-2 px-6 block bg-sky-600 text-white rounded-lg hover:opacity-75 text-sm"
           >
-            Add
+            {saving ? "Adding..." : "Add"}
           </button>
         </div>
       </form>
+      {error && <p role="alert" className="text-red-400">{error}</p>}
     </div>
   );
 }

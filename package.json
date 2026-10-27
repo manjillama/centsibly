@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "author": "Manjil Tamang <hello@manjiltamang.com> (https://manjiltamang.com/)",
   "scripts": {
+    "test": "node --test tests/*.test.cjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",

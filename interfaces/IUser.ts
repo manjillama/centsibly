@@ -23,6 +23,8 @@ export type AvatarBackgroundColorType =
   (typeof AVATAR_BACKGROUND_COLORS)[number];
 export interface IUser {
   _id: string;
+  defaultCurrency?: string;
+  currencySetupRequired?: boolean;
   provider: EProviders;
   name: string;
   email: string;

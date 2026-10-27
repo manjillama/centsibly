@@ -7,9 +7,11 @@ import { useState } from "react";
 export default function MonthlyBudgetItem({
   transaction,
   currency,
+  onUpdate,
 }: {
   transaction: ITransaction;
   currency: string;
+  onUpdate?: (transaction: ITransaction) => void;
 }) {
   const { updateTransaction } = useTransaction();
   const [formProps, setFormProps] = useState<ITransaction>(transaction);
@@ -29,7 +31,7 @@ export default function MonthlyBudgetItem({
   }
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    updateTransaction({ ...formProps, amount: Number(formProps.amount) });
+    (onUpdate || updateTransaction)({ ...formProps, amount: Number(formProps.amount) });
   }
 
   return (

@@ -55,7 +55,7 @@ export default async function RootLayout({
                 </span>
                 <div>
                   <Link
-                    href="https://www.buymeacoffee.com/manjiltamang"
+                    href="https://buymeacoffee.com/xmarman"
                     className="hover:text-sky-600"
                     target="_blank"
                     rel="noreferrer"

@@ -8,7 +8,7 @@ import BudgetInputForm from "../budget-input-form";
 import ChangeYear from "../change-year";
 import DownloadTransactionsCsv from "../download-transactions-csv";
 
-export default function BudgetContainer() {
+export default function BudgetContainer({ currency = "USD" }: { currency?: string }) {
   const { transactionData, refreshTransactionData, addTransaction } =
     useTransaction();
 
@@ -41,7 +41,7 @@ export default function BudgetContainer() {
         <MonthlyBudget
           key={`${i}-${Date.now()}`}
           transactions={allMonthlyTransaction[i]}
-          currency={transactionData.currency}
+          currency={currency}
           monthIndex={i}
           year={transactionData.currentYear}
         />
@@ -71,7 +71,7 @@ export default function BudgetContainer() {
       <div>
         <div className="border-b-[1px] border-neutral-700 py-2 sticky top-0 bg-neutral-900 z-10">
           <BudgetInputForm
-            currency={transactionData.currency}
+            currency={currency}
             addTransaction={addTransaction}
           />
         </div>
@@ -90,7 +90,7 @@ export default function BudgetContainer() {
       <div className="max-w-screen-xl	mx-auto">
         <YearlyChart
           transactions={transactionData.transactions}
-          currency={transactionData.currency}
+          currency={currency}
         />
       </div>
     </div>

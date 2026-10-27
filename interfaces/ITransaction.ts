@@ -3,6 +3,7 @@ import { CategoryType } from "@/types";
 
 export interface ITransaction {
   _id: string;
+  budget?: string | null;
   transactionDate: Date | string;
   title: string;
   category: CategoryType | "";
