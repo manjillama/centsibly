@@ -4,6 +4,8 @@ import { ITransaction } from "@/interfaces/ITransaction";
 import { useEffect, useMemo } from "react";
 import MonthlyBudget from "../monthly-budget";
 import YearlyChart from "../yearly-chart";
+import MonthlyChart from "../monthly-chart";
+import { CategoryType } from "@/types";
 import BudgetInputForm from "../budget-input-form";
 import ChangeYear from "../change-year";
 import DownloadTransactionsCsv from "../download-transactions-csv";
@@ -31,6 +33,19 @@ export default function BudgetContainer({ currency = "USD" }: { currency?: strin
     }
 
     return updatedMonthlyTransaction;
+  }, [transactionData.transactions]);
+
+  const yearlyCategories = useMemo(() => {
+    const totals = new Map<string, number>();
+    transactionData.transactions?.forEach((transaction) => {
+      if (transaction.category === CategoryType.Income) return;
+      totals.set(transaction.category, (totals.get(transaction.category) || 0) + Number(transaction.amount));
+    });
+    const categories = Array.from(totals).filter(([, amount]) => amount > 0).sort((a, b) => b[1] - a[1]);
+    return {
+      labels: categories.map(([category]) => category),
+      series: categories.map(([, amount]) => Number(amount.toFixed(2))),
+    };
   }, [transactionData.transactions]);
 
   function renderMonthlyBudget() {
@@ -87,11 +102,22 @@ export default function BudgetContainer({ currency = "USD" }: { currency?: strin
         </div>
       </div>
       <br />
-      <div className="max-w-screen-xl	mx-auto">
-        <YearlyChart
-          transactions={transactionData.transactions}
-          currency={currency}
-        />
+      <div className="max-w-screen-xl mx-auto px-4 grid grid-cols-1 gap-6 pb-6">
+        <section className="min-w-0" aria-label="Yearly expenses and income">
+          <h3 className="font-semibold mb-4">{transactionData.currentYear} · Expenses vs income</h3>
+          <YearlyChart
+            transactions={transactionData.transactions}
+            currency={currency}
+          />
+        </section>
+        <section className="min-w-0" aria-label="Yearly expenses by category">
+          <h3 className="font-semibold mb-4">{transactionData.currentYear} · Expenses by category</h3>
+          {yearlyCategories.series.length > 0 ? (
+            <div className="w-full max-w-xl mx-auto">
+              <MonthlyChart series={JSON.stringify(yearlyCategories.series)} labels={JSON.stringify(yearlyCategories.labels)} />
+            </div>
+          ) : <p className="text-neutral-400 py-6">Add an expense to see the yearly category breakdown.</p>}
+        </section>
       </div>
     </div>
   );
