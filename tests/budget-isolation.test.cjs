@@ -156,3 +156,24 @@ test('CSV exports preserve yearly columns and include custom currency with escap
   assert.equal(csv(entries, 'IDR'), 'title,category,amount,date,currency\n"Hotel, ""Bali""\nNight 1",Travel,0,2026-10-27,IDR');
   assert.equal(csv([], 'USD'), '');
 });
+
+test('renaming validates titles and only changes the owned budget name', async () => {
+  let saves = 0;
+  const document = { name: 'Trip', currency: 'MXN', user: 'alice', save: async function () { saves++; return this; } };
+  const service = load('services/budgetService.ts', { ...base,
+    mongoose: { isValidObjectId: (id) => /^[a-f0-9]{24}$/.test(id) },
+    '@/models/Budget': { findOne: async (query) => query._id === budgetId && query.user === 'alice' ? document : null },
+    '@/models/Transaction': {},
+  });
+  for (const name of ['', '   ', null, 123, 'x'.repeat(101)]) {
+    await assert.rejects(service.renameBudget(budgetId, name, 'alice'), /budget name/);
+  }
+  await assert.rejects(service.renameBudget(budgetId, 'New title', 'bob'), /Budget not found/);
+  await assert.rejects(service.renameBudget('invalid', 'New title', 'alice'), /Invalid budget id/);
+  assert.equal(saves, 0);
+  const result = await service.renameBudget(budgetId, '  Mexico vacation  ', 'alice');
+  assert.equal(result.name, 'Mexico vacation');
+  assert.equal(result.currency, 'MXN');
+  assert.equal(result.user, 'alice');
+  assert.equal(saves, 1);
+});

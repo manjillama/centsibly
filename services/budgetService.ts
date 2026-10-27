@@ -30,4 +30,12 @@ const getBudgetTransactions = async (id: string, userId: string) => {
   return Transaction.find({ user: userId, budget: id }).sort({ transactionDate: -1 }).lean();
 };
 
-export default { requireUserBudget, getUserBudgets, createBudget, getBudgetTransactions };
+const renameBudget = async (id: string, name: unknown, userId: string) => {
+  if (typeof name !== "string" || !name.trim() || name.trim().length > 100)
+    throw new AppError("Enter a budget name between 1 and 100 characters", StatusCodes.BAD_REQUEST);
+  const budget = await requireUserBudget(id, userId);
+  budget.name = name.trim();
+  return budget.save();
+};
+
+export default { requireUserBudget, getUserBudgets, createBudget, getBudgetTransactions, renameBudget };

@@ -2,7 +2,10 @@
 import { ITransaction } from "@/interfaces/ITransaction";
 import { formatCurrency, transformIndexToMonth } from "@/utils";
 import { useMemo } from "react";
-import ApexChart, { Props } from "react-apexcharts";
+import dynamic from "next/dynamic";
+import type { Props } from "react-apexcharts";
+
+const ApexChart = dynamic(() => import("react-apexcharts"), { ssr: false });
 
 export default function YearlyChart({
   transactions,

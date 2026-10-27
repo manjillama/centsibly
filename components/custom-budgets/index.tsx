@@ -23,6 +23,8 @@ export default function CustomBudgets({ defaultCurrency = "USD" }: { defaultCurr
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [renameSaving, setRenameSaving] = useState(false);
+  const [renameError, setRenameError] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -39,6 +41,7 @@ export default function CustomBudgets({ defaultCurrency = "USD" }: { defaultCurr
   }, []);
 
   useEffect(() => {
+    setRenameError("");
     if (!selected) return;
     let active = true;
     setTransactions(null);
@@ -72,6 +75,30 @@ export default function CustomBudgets({ defaultCurrency = "USD" }: { defaultCurr
     if (response.status !== "success") throw new Error(response.message);
     if (selectedRef.current !== budgetId) return;
     setTransactions((current) => current ? [...current, response.data] : current);
+  }
+
+  async function renameBudget(event: React.FocusEvent<HTMLInputElement>) {
+    const input = event.currentTarget;
+    const currentName = budgets.find((budget) => budget._id === selected)?.name || "";
+    const name = input.value.trim();
+    input.value = name;
+    if (renameSaving || name === currentName) return;
+    if (!name) {
+      input.value = currentName;
+      setRenameError("Enter a budget name between 1 and 100 characters");
+      return;
+    }
+    const budgetId = selected;
+    setRenameSaving(true);
+    setRenameError("");
+    const response = await api.put<IBudget>(`/api/budgets/${budgetId}`, { name });
+    if (response.status === "success") {
+      setBudgets((current) => current.map((budget) => budget._id === budgetId ? response.data : budget));
+    } else if (selectedRef.current === budgetId) {
+      input.value = currentName;
+      setRenameError(response.message);
+    }
+    setRenameSaving(false);
   }
 
   async function updateTransaction(transaction: ITransaction) {
@@ -138,7 +165,23 @@ export default function CustomBudgets({ defaultCurrency = "USD" }: { defaultCurr
           <div className="min-w-0" key={selected}>
             <div className="border border-neutral-700 rounded-xl p-5 mb-5">
               <div className="flex justify-between items-start gap-4">
-                <h3 className="font-semibold text-2xl break-words">{budgets.find((budget) => budget._id === selected)?.name}</h3>
+                <div className="min-w-0 grow">
+                  <h3 className="font-semibold text-2xl">
+                    <input
+                      type="text"
+                      aria-label="Budget title"
+                      defaultValue={budgets.find((budget) => budget._id === selected)?.name || ""}
+                      maxLength={100}
+                      required
+                      readOnly={renameSaving}
+                      onBlur={renameBudget}
+                      onFocus={() => setRenameError("")}
+                      onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }}
+                      className="w-full min-w-0 rounded-md"
+                    />
+                  </h3>
+                  {renameError && <p role="alert" className="text-red-400 mt-2">{renameError}</p>}
+                </div>
                 {transactions !== null && <DownloadTransactionsCsv transactions={transactions} currency={currency} filename={`${(budgets.find((budget) => budget._id === selected)?.name || "budget").replace(/[^a-z0-9_-]+/gi, "-")}-${currency}.csv`} />}
               </div>
               <p className="text-neutral-400 mt-2">Only transactions added here count toward this budget.</p>

@@ -1,6 +1,8 @@
 "use client";
-import React, { useEffect, useState, memo, useMemo } from "react";
-import ReactApexChart from "react-apexcharts";
+import React, { useEffect, useState, memo } from "react";
+import dynamic from "next/dynamic";
+
+const ReactApexChart = dynamic(() => import("react-apexcharts"), { ssr: false });
 
 // eslint-disable-next-line react/display-name
 const MonthlyChart = memo(
