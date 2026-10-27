@@ -196,9 +196,8 @@ export default function CustomBudgets({ defaultCurrency = "USD" }: { defaultCurr
                 <BudgetInputForm currency={currency} addTransaction={addTransaction} />
               </div>
               <div>
-                <h4 className="font-semibold mb-3">Transactions <span className="text-neutral-500">({transactions.length})</span></h4>
+                <h4 className="font-semibold mb-3 px-4">Transactions <span className="text-neutral-500">({transactions.length})</span></h4>
                 {transactions.length === 0 ? <p className="rounded-xl bg-neutral-800/50 p-6 text-neutral-400">No transactions yet. Add your first expense using the form above.</p> : <>
-                  <p className="text-neutral-400 mb-3">Edit any field to update a transaction. Changes save when you leave the field.</p>
                   <div className="flex flex-wrap">
                     <div className="lg:w-3/5 w-full lg:mb-0 mb-4">
                       {transactions.map((transaction) => <MonthlyBudgetItem key={transaction._id} transaction={transaction} currency={currency} onUpdate={updateTransaction} />)}
