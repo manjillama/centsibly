@@ -82,11 +82,11 @@ export default function BudgetWorkspace() {
           >{label}</button>
         ))}
       </div>
-      <div className="text-xs text-neutral-400 flex items-center gap-2 py-3">
+      <div className="relative group text-xs text-neutral-400 flex items-center gap-2 py-3">
         <span>Monthly currency: {settings.currency}</span>
-        <span className="relative group">
+        <span>
           <button type="button" aria-label="About your default currency" aria-describedby="currency-help" className="border border-neutral-500 rounded-full w-5 h-5 text-xs focus-visible:outline focus-visible:outline-sky-500">?</button>
-          <span id="currency-help" role="tooltip" className="hidden group-hover:block group-focus-within:block absolute right-0 top-full mt-2 w-64 p-3 rounded-lg bg-neutral-800 border border-neutral-600 text-neutral-200 shadow-lg z-20">Your default currency can’t be changed once set. To track expenses in another currency, create a custom budget and choose its currency.</span>
+          <span id="currency-help" role="tooltip" className="hidden group-hover:block group-focus-within:block absolute left-0 sm:left-auto sm:right-0 top-full mt-2 w-64 max-w-[calc(100vw-2.5rem)] p-3 rounded-lg bg-neutral-800 border border-neutral-600 text-neutral-200 shadow-lg z-20">Your default currency can’t be changed once set. To track expenses in another currency, create a custom budget and choose its currency.</span>
         </span>
       </div>
       </div>

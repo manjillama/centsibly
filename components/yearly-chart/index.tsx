@@ -31,6 +31,7 @@ function YearlyChart({
 
     return {
       options: {
+        colors: ["#38bdf8", "#f87171", "#4ade80"],
         legend: {
           labels: {
             colors: "rgba(225, 225, 225, 0.443)",
