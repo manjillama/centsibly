@@ -206,7 +206,6 @@ export default function CustomBudgets({ defaultCurrency = "USD" }: { defaultCurr
   const currency = budgets.find((budget) => budget._id === selected)?.currency || "USD";
   const totals = transactionTotals(transactions ?? []);
   const expense = totals.expenses;
-  const income = totals.income;
   useEffect(() => {
     if (transactions === null) return;
     setBudgets((current) => current.map((budget) => budget._id === selected ? { ...budget, spent: expense } : budget));
@@ -296,13 +295,11 @@ export default function CustomBudgets({ defaultCurrency = "USD" }: { defaultCurr
                 {transactions !== null && <DownloadTransactionsCsv transactions={transactions} currency={currency} filename={`${(budgets.find((budget) => budget._id === selected)?.name || "budget").replace(/[^a-z0-9_-]+/gi, "-")}-${currency}.csv`} />}
                 </div>
               </div>
-              <p className="text-neutral-400 mt-2">Only transactions added here count toward this budget.</p>
+              <p className="text-neutral-400 mt-2">Expenses added here count toward your spending target.</p>
               <span className="inline-block mt-3 rounded-full bg-neutral-800 px-3 py-1 text-xs text-neutral-300">{currency} · Separate from monthly budget · All dates</span>
-              {transactions !== null && <dl className="grid grid-cols-2 xl:grid-cols-4 gap-4 mt-6 border-t border-neutral-700 pt-4">
-                <div><dt className="text-neutral-400">Total spent</dt><dd className="text-2xl font-semibold mt-1">{formatCurrency(currency)}{expense.toFixed(2)}</dd></div>
-                <div><dt className="text-neutral-400">Total income</dt><dd className="text-2xl font-semibold mt-1">{formatCurrency(currency)}{income.toFixed(2)}</dd></div>
-                <div><dt className="text-neutral-400">Set aside</dt><dd className="text-2xl font-semibold mt-1">{formatCurrency(currency)}{totals.savings.toFixed(2)}</dd></div>
-                <div><dt className="text-neutral-400">Remaining</dt><dd className="text-2xl font-semibold mt-1">{formatCurrency(currency)}{totals.remaining.toFixed(2)}</dd></div>
+              {transactions !== null && <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6 border-t border-neutral-700 pt-4">
+                <div><dt className="text-neutral-400">Spent</dt><dd className="text-2xl font-medium mt-1">{formatCurrency(currency)}{expense.toLocaleString(undefined, { maximumFractionDigits: 0 })}</dd></div>
+                {target != null && <div><dt className="text-neutral-400">{expense > target ? "Over target" : "Remaining"}</dt><dd className={`text-2xl font-medium mt-1 ${expense > target ? "text-red-400" : "text-sky-300"}`}>{formatCurrency(currency)}{Math.abs(target - expense).toLocaleString(undefined, { maximumFractionDigits: 0 })}</dd></div>}
               </dl>}
               <div className="mt-5 border-t border-neutral-700 pt-4">
                 <label htmlFor="budget-target" className="text-neutral-400">Spending target</label>
@@ -317,20 +314,21 @@ export default function CustomBudgets({ defaultCurrency = "USD" }: { defaultCurr
                   <div role="progressbar" aria-label="Spending target used" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.min(100, Math.round(expense / target * 100))} className="h-2 rounded-full bg-neutral-800 overflow-hidden">
                     <div className={`h-full ${expense > target ? "bg-red-500" : "bg-sky-500"}`} style={{ width: `${Math.min(100, Math.max(0, expense / target * 100))}%` }} />
                   </div>
-                  <p className={`mt-2 ${expense > target ? "text-red-400" : "text-neutral-400"}`}>{formatCurrency(currency)}{Math.abs(target - expense).toFixed(2)} {expense > target ? "over target" : "remaining"} · {Math.round(expense / target * 100)}% used</p>
+                  <p className={`mt-2 ${expense > target ? "text-red-400" : "text-neutral-400"}`}>{formatCurrency(currency)}{Math.abs(target - expense).toLocaleString(undefined, { maximumFractionDigits: 0 })} {expense > target ? "over target" : "remaining"} · {Math.round(expense / target * 100)}% used</p>
                 </div> : null}
               </div>
             </div>
             {transactions === null ? <p>{error ? "Unable to load transactions. Choose another budget and try again." : "Loading transactions..."}</p> : <>
               <div className="border-y border-neutral-800 py-3 mb-6">
-                <BudgetInputForm currency={currency} addTransaction={addTransaction} />
+                <BudgetInputForm expensesOnly currency={currency} addTransaction={addTransaction} />
               </div>
               <div>
+                {transactions.some((transaction) => getTransactionType(transaction) !== TransactionType.Expense) && <p className="px-4 mb-3 text-xs text-neutral-400">Existing income and savings entries are kept for your records. Only expenses count toward this target.</p>}
                 <h4 className="font-medium mb-3 px-4 text-neutral-300">Transactions <span className="text-neutral-500">({transactions.length})</span></h4>
                 {transactions.length === 0 ? <p className="rounded-xl bg-neutral-800/50 p-6 text-neutral-400">No transactions yet. Add your first expense using the form above.</p> : <>
                   <div className="flex flex-wrap">
                     <div className="lg:w-3/5 w-full lg:mb-0 mb-4">
-                      {transactions.map((transaction) => <MonthlyBudgetItem key={transaction._id} transaction={transaction} currency={currency} onUpdate={updateTransaction} onDelete={deleteTransaction} />)}
+                      {transactions.map((transaction) => <MonthlyBudgetItem expensesOnly key={transaction._id} transaction={transaction} currency={currency} onUpdate={updateTransaction} onDelete={deleteTransaction} />)}
                     </div>
                     <div className="lg:w-2/5 w-full min-w-0" role="region" aria-label="Expenses by category">
                       {expenseChart.series.length > 0 ? (

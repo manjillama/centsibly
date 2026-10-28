@@ -84,3 +84,7 @@ the existing columns.
 
 After updating the transaction schema, restart an existing development server once
 to refresh the cached Mongoose model.
+
+Custom budgets accept new expenses only. Remaining is the spending target minus
+expenses; without a target, only spent is shown. Existing income and savings
+entries remain visible and editable but do not affect the spending target.

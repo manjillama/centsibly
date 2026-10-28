@@ -12,9 +12,11 @@ export default function MonthlyBudgetItem({
   currency,
   onUpdate,
   onDelete,
+  expensesOnly = false,
 }: {
   transaction: ITransaction;
   currency: string;
+  expensesOnly?: boolean;
   onUpdate?: (transaction: ITransaction) => Promise<void>;
   onDelete?: (id: string) => Promise<void>;
 }) {
@@ -132,7 +134,7 @@ export default function MonthlyBudgetItem({
           className={styles.category}
           required
         >
-          <CategoryOptions />
+          <CategoryOptions types={expensesOnly ? Array.from(new Set([TransactionType.Expense, getTransactionType(transaction)])) : undefined} />
         </select>
         <div className={styles.date}>
           <label className="date-picker-label text-white">

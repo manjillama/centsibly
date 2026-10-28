@@ -287,7 +287,7 @@ test('creation and editing persist types and reject mismatched categories', asyn
       findOne: async () => document,
     },
   });
-  const entry = { title: 'Set aside', amount: 100, transactionDate: '2026-10-27', budget: budgetId };
+  const entry = { title: 'Set aside', amount: 100, transactionDate: '2026-10-27' };
   for (const [type, category] of [['expense', 'Food'], ['income', 'Salary'], ['savings', 'Emergency fund']]) {
     const result = await service.createTransaction({ ...entry, type, category }, 'alice');
     assert.equal(created.type, type);
@@ -326,4 +326,26 @@ test('one category choice determines type without reclassifying legacy savings e
     }
   }
   assert.equal(transactionTypes.typeForCategory('Savings & Investments'), 'expense');
+});
+
+
+test('custom budgets only accept new expenses while existing income and savings remain editable', async () => {
+  let creates = 0;
+  const document = { budget: budgetId, category: 'Emergency fund', type: 'savings', save: async function () { return this; } };
+  const service = load('services/transactionService.ts', { ...base,
+    '@/services/budgetService': { requireUserBudget: async () => ({}) },
+    '@/models/Transaction': {
+      create: async (data) => { creates++; return { ...data, _id: 'new' }; },
+      findOne: async () => document,
+    },
+  });
+  const entry = { title: 'Trip', amount: 100, transactionDate: '2026-10-27', budget: budgetId };
+  for (const [type, category] of [['income', 'Salary'], ['savings', 'Emergency fund']]) {
+    await assert.rejects(service.createTransaction({ ...entry, type, category }, 'alice'), /only accept expenses/);
+    const saved = await service.updateTransaction('legacy', { ...entry, type, category }, 'alice');
+    assert.equal(saved.type, type);
+    assert.equal(saved.budget, budgetId);
+  }
+  await service.createTransaction({ ...entry, category: 'Travel', type: 'expense' }, 'alice');
+  assert.equal(creates, 1);
 });

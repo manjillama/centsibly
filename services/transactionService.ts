@@ -36,6 +36,8 @@ const createTransaction = async (data: ITransaction, userId: string) => {
   await currencyService.requireCurrency(userId);
   if (data.budget) await budgetService.requireUserBudget(data.budget, userId);
   const type = validateType(data);
+  if (data.budget && type !== TransactionType.Expense)
+    throw new AppError("Custom budgets only accept expenses", StatusCodes.BAD_REQUEST);
   const { transactionDate, title, category, amount } = data;
   const transaction = await Transaction.create({
     transactionDate,

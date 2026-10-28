@@ -24,8 +24,10 @@ const INITIAL_FORM_PROPS = {
 export default function BudgetInputForm({
   currency,
   addTransaction,
+  expensesOnly = false,
 }: {
   currency: string;
+  expensesOnly?: boolean;
   addTransaction: (transaction: ITransaction) => void | Promise<void>;
 }) {
   const [formProps, setFormProps] =
@@ -88,7 +90,7 @@ export default function BudgetInputForm({
             className="grow"
             autoCapitalize="true"
             autoComplete="off"
-            placeholder="Type new expense or income..."
+            placeholder={expensesOnly ? "Type new expense..." : "Type new expense or income..."}
             required
           />
         </div>
@@ -131,7 +133,7 @@ export default function BudgetInputForm({
             <option value={""} className="text-neutral-500">
               Select category...
             </option>
-            <CategoryOptions />
+            <CategoryOptions types={expensesOnly ? [TransactionType.Expense] : undefined} />
           </select>
         </div>
         <div className={`${styles.field} ${styles.date}`}>
