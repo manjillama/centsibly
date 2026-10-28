@@ -3,13 +3,14 @@ import { getTransactionType } from "@/utils/transactionTypes";
 import { TransactionType } from "@/types";
 import { ITransaction } from "@/interfaces/ITransaction";
 import { formatCurrency, transformIndexToMonth } from "@/utils";
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import dynamic from "next/dynamic";
+import DeferredChart from "../deferred-chart";
 import type { Props } from "react-apexcharts";
 
 const ApexChart = dynamic(() => import("react-apexcharts"), { ssr: false });
 
-export default function YearlyChart({
+function YearlyChart({
   transactions,
   currency,
 }: {
@@ -68,6 +69,7 @@ export default function YearlyChart({
         },
         chart: {
           id: "basic-bar",
+          animations: { enabled: false },
           toolbar: {
             show: false,
           },
@@ -112,12 +114,16 @@ export default function YearlyChart({
 
   return (
     <div className="text-black">
+      <DeferredChart height={350}>
       <ApexChart
         options={yearlyData.options}
         series={yearlyData.series}
         type="area"
         height={350}
       />
+      </DeferredChart>
     </div>
   );
 }
+
+export default memo(YearlyChart);

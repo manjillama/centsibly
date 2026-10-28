@@ -1,13 +1,13 @@
-import { useTransaction } from "@/context/transaction-provider";
+import { useTransactionActions } from "@/context/transaction-provider";
 import { ITransaction } from "@/interfaces/ITransaction";
 import { TransactionType } from "@/types";
 import { typeForCategory, getTransactionType } from "@/utils/transactionTypes";
 import { categoryToEmoji, formatCurrency, formatDate } from "@/utils";
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import CategoryOptions from "../budget-input-form/category-options";
 import styles from "./row.module.css";
 
-export default function MonthlyBudgetItem({
+function MonthlyBudgetItem({
   transaction,
   currency,
   onUpdate,
@@ -20,7 +20,7 @@ export default function MonthlyBudgetItem({
   onUpdate?: (transaction: ITransaction) => Promise<void>;
   onDelete?: (id: string) => Promise<void>;
 }) {
-  const { updateTransaction, deleteTransaction } = useTransaction();
+  const { updateTransaction, deleteTransaction } = useTransactionActions();
   const [formProps, setFormProps] = useState<ITransaction>(transaction);
 
   const [saveStatus, setSaveStatus] = useState("");
@@ -183,3 +183,5 @@ export default function MonthlyBudgetItem({
     </div>
   );
 }
+
+export default memo(MonthlyBudgetItem);

@@ -1,7 +1,8 @@
 "use client";
 import { useTransaction } from "@/context/transaction-provider";
 import { ITransaction } from "@/interfaces/ITransaction";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
+import groupTransactionsByMonth from "@/utils/groupTransactionsByMonth";
 import MonthlyBudget from "../monthly-budget";
 import YearlyChart from "../yearly-chart";
 import MonthlyChart from "../monthly-chart";
@@ -18,24 +19,13 @@ export default function BudgetContainer({ currency = "USD" }: { currency?: strin
 
   useEffect(() => {
     refreshTransactionData(new Date().getFullYear());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [refreshTransactionData]);
 
-  const allMonthlyTransaction = useMemo(() => {
-    const updatedMonthlyTransaction: ITransaction[][] = Array.from(
-      { length: 12 },
-      () => []
-    );
-
-    if (transactionData.transactions) {
-      transactionData.transactions.forEach((transaction) => {
-        const monthIndex = new Date(transaction.transactionDate).getUTCMonth();
-        updatedMonthlyTransaction[monthIndex].push(transaction);
-      });
-    }
-
-    return updatedMonthlyTransaction;
-  }, [transactionData.transactions]);
+  const previousMonths = useRef<ITransaction[][]>([]);
+  const allMonthlyTransaction = useMemo(() => groupTransactionsByMonth(
+    transactionData.transactions ?? [], previousMonths.current
+  ), [transactionData.transactions]);
+  useEffect(() => { previousMonths.current = allMonthlyTransaction; }, [allMonthlyTransaction]);
 
   const yearlyCategories = useMemo(() => {
     const totals = new Map<string, number>();

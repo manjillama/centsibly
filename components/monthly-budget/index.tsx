@@ -2,11 +2,11 @@ import { ITransaction } from "@/interfaces/ITransaction";
 import { formatCurrency, transformIndexToMonth } from "@/utils";
 import MonthlyBudgetItem from "../monthly-budget-item";
 import MonthlyChart from "../monthly-chart";
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import { TransactionType } from "@/types";
 import { getTransactionType, transactionTotals } from "@/utils/transactionTypes";
 
-export default function MonthlyBudget({
+function MonthlyBudget({
   transactions,
   currency,
   monthIndex,
@@ -41,6 +41,10 @@ export default function MonthlyBudget({
     ];
   }, [monthlyChartData]);
 
+  const sortedTransactions = useMemo(() => [...transactions].sort(
+    (a, b) => new Date(a.transactionDate).getTime() - new Date(b.transactionDate).getTime()
+  ), [transactions]);
+
   if (transactions.length <= 0) return null;
 
   const totals = transactionTotals(transactions);
@@ -66,13 +70,8 @@ export default function MonthlyBudget({
       </div>
       <div className="flex flex-wrap">
         <div className="lg:w-3/5 w-full lg:mb-0 mb-4">
-          {[...transactions]
-            .sort(
-              (a, b) =>
-                (new Date(a.transactionDate) as any) -
-                (new Date(b.transactionDate) as any)
-            )
-            .map((transaction, i) => (
+          {sortedTransactions
+            .map((transaction) => (
               <MonthlyBudgetItem
                 transaction={transaction}
                 currency={currency}
@@ -90,3 +89,5 @@ export default function MonthlyBudget({
     </div>
   );
 }
+
+export default memo(MonthlyBudget);
