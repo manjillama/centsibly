@@ -54,7 +54,7 @@ export default function SignUpForm() {
   };
 
   return (
-    <div className="container max-w-xs mx-auto mt-[10%]">
+    <div>
       <form onSubmit={handleSubmit} className="space-y-4 my-4 text-white">
         {errors.length ? (
           <Alert>
@@ -71,6 +71,9 @@ export default function SignUpForm() {
             <input
               className="border border-neutral-300 w-full rounded-lg p-3"
               name="name"
+              autoComplete="name"
+              placeholder="Alex Morgan"
+              required
               type="text"
               value={formProps.name}
               onChange={handleChange}
@@ -83,6 +86,9 @@ export default function SignUpForm() {
             <input
               className="border border-neutral-300 w-full rounded-lg p-3"
               name="email"
+              autoComplete="email"
+              placeholder="you@example.com"
+              required
               type="email"
               value={formProps.email}
               onChange={handleChange}
@@ -95,6 +101,8 @@ export default function SignUpForm() {
             <input
               className="border border-neutral-300 w-full rounded-lg p-3"
               name="password"
+              autoComplete="new-password"
+              placeholder="At least 8 characters"
               type="password"
               value={formProps.password}
               onChange={handleChange}
@@ -117,7 +125,7 @@ export default function SignUpForm() {
               <Spinner />
             </div>
           )}
-          Sign up
+          {isSubmitting ? "Creating your account…" : "Create account"}
         </button>
       </form>
     </div>

@@ -50,6 +50,9 @@ export default function SignInForm() {
           <input
             className="border border-neutral-300 w-full rounded-lg p-3"
             name="email"
+            autoComplete="email"
+            placeholder="you@example.com"
+            required
             type="email"
             value={formProps.email}
             onChange={handleChange}
@@ -62,6 +65,9 @@ export default function SignInForm() {
           <input
             className="border border-neutral-300 w-full rounded-lg p-3"
             name="password"
+            autoComplete="current-password"
+            placeholder="Enter your password"
+            required
             type="password"
             value={formProps.password}
             onChange={handleChange}
@@ -82,7 +88,7 @@ export default function SignInForm() {
             <Spinner />
           </div>
         )}
-        Log in
+        {isSubmitting ? "Logging in…" : "Log in"}
       </button>
     </form>
   );

@@ -1,5 +1,7 @@
 "use client";
 import React, { useState } from "react";
+import AuthShell from "../auth/auth-shell";
+import styles from "../auth/auth.module.css";
 import OAuthProviders from "../signin/oauth-providers";
 import { ClientSafeProvider, LiteralUnion } from "next-auth/react";
 import { BuiltInProviderType } from "next-auth/providers/index";
@@ -12,34 +14,36 @@ type Props = {
   > | null;
 };
 export default function SignUpWrapper({ providers }: Props) {
+  const hasOAuthProviders = Object.values(providers ?? {}).some(
+    (provider) => provider.id !== "credentials"
+  );
   const [showSignInUsingCredentials, setShowSignInUsingCredentials] =
-    useState(false);
+    useState(!hasOAuthProviders);
 
   return (
-    <div className="container max-w-xs mx-auto mt-[10%]">
-      <h1 className="text-3xl font-bold text-white">Sign up</h1>
+    <AuthShell mode="signup">
       {!showSignInUsingCredentials ? (
         <>
           <OAuthProviders providers={providers} />
-          <hr className="my-4" />
+          <div className={styles.divider}>or use your email</div>
           <button
             onClick={() => setShowSignInUsingCredentials(true)}
-            className="w-full text-sky-600 hover:underline"
+            className={styles.option}
           >
-            Continue with credentials
+            Continue with email
           </button>
         </>
       ) : (
         <>
           <SignUpForm />
-          <button
+          {hasOAuthProviders && <button
             onClick={() => setShowSignInUsingCredentials(false)}
-            className="w-full text-sky-600 hover:underline"
+            className={styles.backOption}
           >
-            Other signup options
-          </button>
+            ← Other signup options
+          </button>}
         </>
       )}
-    </div>
+    </AuthShell>
   );
 }
