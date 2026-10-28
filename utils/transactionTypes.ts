@@ -3,7 +3,7 @@ import type { ITransaction } from "@/interfaces/ITransaction";
 
 export const incomeCategories = ["Salary", "Freelance", "Gifts", "Other income", CategoryType.Income];
 export const savingsCategories = ["Emergency fund", "Vacation fund", "Investments", "Other savings"];
-export const expenseCategories = Object.values(CategoryType).filter((category) => category !== CategoryType.Income);
+export const expenseCategories = Object.values(CategoryType).filter((category) => category !== CategoryType.Income && category !== CategoryType.SavingsAndInvestments);
 
 // Existing savings-category entries remain expenses until the user explicitly changes their type.
 export function getTransactionType(transaction: Pick<ITransaction, "type" | "category">): TransactionType {
@@ -29,6 +29,6 @@ export function transactionTotals(transactions: ITransaction[]) {
 
 export function typeForCategory(category: string): TransactionType {
   if (incomeCategories.includes(category)) return TransactionType.Income;
-  if (savingsCategories.includes(category)) return TransactionType.Savings;
+  if (savingsCategories.includes(category) || category === CategoryType.SavingsAndInvestments) return TransactionType.Savings;
   return TransactionType.Expense;
 }

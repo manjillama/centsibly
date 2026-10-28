@@ -305,8 +305,7 @@ test('creation and editing persist types and reject mismatched categories', asyn
   assert.equal(document.type, 'savings');
   await service.createTransaction({ ...entry, category: 'Income' }, 'alice');
   assert.equal(created.type, 'income');
-  await service.createTransaction({ ...entry, category: 'Savings & Investments' }, 'alice');
-  assert.equal(created.type, 'expense');
+  await assert.rejects(service.createTransaction({ ...entry, category: 'Savings & Investments' }, 'alice'), /valid transaction type/);
 });
 
 test('CSV includes inferred and explicit types while preserving existing column order', () => {
@@ -325,7 +324,7 @@ test('one category choice determines type without reclassifying legacy savings e
       assert.equal(transactionTypes.typeForCategory(category), type);
     }
   }
-  assert.equal(transactionTypes.typeForCategory('Savings & Investments'), 'expense');
+  assert.equal(transactionTypes.typeForCategory('Savings & Investments'), 'savings');
 });
 
 
@@ -348,4 +347,22 @@ test('custom budgets only accept new expenses while existing income and savings 
   }
   await service.createTransaction({ ...entry, category: 'Travel', type: 'expense' }, 'alice');
   assert.equal(creates, 1);
+});
+
+
+test('overlapping savings category is hidden from new entries while existing records remain editable', async () => {
+  assert.ok(!transactionTypes.expenseCategories.includes('Savings & Investments'));
+  assert.ok(!transactionTypes.savingsCategories.includes('Savings & Investments'));
+  assert.ok(transactionTypes.savingsCategories.includes('Investments'));
+  assert.ok(transactionTypes.savingsCategories.includes('Other savings'));
+  const document = { category: 'Savings & Investments', amount: 100, save: async function () { return this; } };
+  const service = load('services/transactionService.ts', { ...base,
+    '@/services/budgetService': { requireUserBudget: async () => ({}) },
+    '@/models/Transaction': { findOne: async () => document },
+  });
+  await service.updateTransaction('legacy', { category: 'Savings & Investments', amount: 120, title: 'Legacy savings', transactionDate: '2026-10-27' }, 'alice');
+  assert.equal(document.type, 'expense');
+  assert.equal(document.amount, 120);
+  await service.updateTransaction('legacy', { category: 'Savings & Investments', type: 'savings', amount: 120, title: 'Savings', transactionDate: '2026-10-27' }, 'alice');
+  assert.equal(document.type, 'savings');
 });

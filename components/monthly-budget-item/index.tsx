@@ -134,6 +134,7 @@ export default function MonthlyBudgetItem({
           className={styles.category}
           required
         >
+          {formProps.category === "Savings & Investments" && <option value="Savings & Investments">Savings &amp; Investments (existing entry)</option>}
           <CategoryOptions types={expensesOnly ? Array.from(new Set([TransactionType.Expense, getTransactionType(transaction)])) : undefined} />
         </select>
         <div className={styles.date}>
