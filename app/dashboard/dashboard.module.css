@@ -1,0 +1,7 @@
+.dashboard { max-width: 1280px; margin: 0 auto; padding: 12px 24px 24px; }
+.header { padding: 0 16px 24px; }
+.eyebrow { color: #7dd3fc; text-transform: uppercase; letter-spacing: .15em; font-size: 10px; font-weight: 500; margin-bottom: 10px; }
+.description { color: #a3a3a3; font-size: 13px; margin-top: 10px; }
+.dashboard :global(input:not(.picker)):focus-visible, .dashboard select:focus-visible { outline: 1px solid #38bdf8; outline-offset: 3px; border-radius: 4px; }
+.dashboard button:focus-visible, .dashboard a:focus-visible { outline: 2px solid #38bdf8; outline-offset: 3px; }
+@media (max-width: 640px) { .dashboard { padding: 0 4px 16px; } .header { padding-bottom: 18px; } }

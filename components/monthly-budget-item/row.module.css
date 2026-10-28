@@ -1,0 +1,10 @@
+.container { container-type: inline-size; }
+.row { display: grid; grid-template-columns: minmax(100px, 1fr) 80px 150px 110px; gap: 8px; align-items: center; border-radius: 6px; padding: 8px 36px 8px 16px; }
+.row:hover, .row:focus-within { background: #ffffff04; }
+.title { display: flex; align-items: center; min-width: 0; }
+.title input { min-width: 0; width: 100%; }
+.category { width: 100%; min-width: 0; font-size: 13px; }
+.category optgroup, .category option { background: #262626; color: white; }
+.date { position: relative; min-width: 0; }
+.date label { font-size: 12px; white-space: nowrap; }
+@container (max-width: 590px) { .row { grid-template-columns: minmax(0, 1fr) 90px; gap: 5px 10px; } .title { grid-column: 1; } .category { grid-row: 2; } .date { grid-row: 2; grid-column: 2; } }

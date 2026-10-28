@@ -5,11 +5,12 @@ export default function ChangeYear() {
     useTransaction();
 
   return (
-    <div className="flex space-x-2">
+    <div className="flex items-center gap-3">
       <button
+        aria-label="Previous year"
         onClick={changeToPreviousYear}
         type="button"
-        className="hover:bg-neutral-600 border-[1px] border-neutral-600 w-[28px] h-[28px] rounded-md"
+        className="hover:bg-neutral-800 border border-neutral-700 text-neutral-400 hover:text-white w-8 h-8 rounded-lg transition-colors"
       >
         <svg
           className="mx-auto"
@@ -22,13 +23,14 @@ export default function ChangeYear() {
           <path d="M9 4L9 11L4.5 7.5L9 4Z" fill="currentColor"></path>
         </svg>
       </button>
-      <h1 className="text-xl font-bold text-white">
+      <h2 className="text-base font-medium text-neutral-200 tabular-nums">
         {transactionData.currentYear}
-      </h1>
+      </h2>
       <button
+        aria-label="Next year"
         onClick={changeToNextYear}
         type="button"
-        className="hover:bg-neutral-600 border-[1px] border-neutral-600 w-[28px] h-[28px] rounded-md"
+        className="hover:bg-neutral-800 border border-neutral-700 text-neutral-400 hover:text-white w-8 h-8 rounded-lg transition-colors"
       >
         <svg
           className="mx-auto"

@@ -67,3 +67,20 @@ They must complete this step before adding transactions. Each new custom budget
 has a currency dropdown; its currency is fixed at creation and can differ from
 the monthly default or other custom budgets. Transactions inherit their budget's
 currency, so totals never combine currencies and no exchange conversion occurs.
+
+
+### Transaction types
+
+Transactions use Expense, Income, or Savings, with categories specific to each type.
+Remaining money is income minus expenses minus savings contributions. Spending
+charts and custom-budget spending targets count expenses only; the yearly trend
+chart shows savings separately. Savings entries record money set aside, rather
+than transfers between linked accounts.
+
+Existing records are not migrated: records without a type use Income when their
+category is Income, and Expense otherwise. Existing Savings & Investments entries
+remain expenses unless explicitly changed. CSV exports append a type column after
+the existing columns.
+
+After updating the transaction schema, restart an existing development server once
+to refresh the cached Mongoose model.

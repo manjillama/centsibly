@@ -1,8 +1,11 @@
 import { useTransaction } from "@/context/transaction-provider";
 import { ITransaction } from "@/interfaces/ITransaction";
-import { CategoryType } from "@/types";
+import { TransactionType } from "@/types";
+import { typeForCategory, getTransactionType } from "@/utils/transactionTypes";
 import { categoryToEmoji, formatCurrency, formatDate } from "@/utils";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import CategoryOptions from "../budget-input-form/category-options";
+import styles from "./row.module.css";
 
 export default function MonthlyBudgetItem({
   transaction,
@@ -24,6 +27,12 @@ export default function MonthlyBudgetItem({
   const saveVersion = useRef(0);
   const lastSubmitted = useRef(JSON.stringify({ ...transaction, amount: Number(transaction.amount) }));
 
+  useEffect(() => {
+    if (saveStatus !== "Saved") return;
+    const timeout = setTimeout(() => setSaveStatus(""), 2000);
+    return () => clearTimeout(timeout);
+  }, [saveStatus]);
+
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
@@ -38,6 +47,10 @@ export default function MonthlyBudgetItem({
 
   function handleChange(event: React.FormEvent<HTMLInputElement>) {
     const { name, value } = event.currentTarget;
+    if (name === "category") {
+      setFormProps({ ...formProps, category: value, type: typeForCategory(value) });
+      return;
+    }
 
     setFormProps({
       ...formProps,
@@ -72,19 +85,19 @@ export default function MonthlyBudgetItem({
   }
 
   return (
-    <div className="group relative lg:border-0 border-b-[1px] border-neutral-700">
+    <div className={`${styles.container} group relative lg:border-0 border-b-[1px] border-neutral-700`}>
       <form
         onBlur={handleSubmit}
-        className="flex flex-wrap hover:bg-neutral-700 rounded-md space-x-4 py-1 pr-10"
+        className={styles.row}
       >
-        <div className="ml-4 grow md:w-auto w-full flex items-center">
+        <div className={styles.title}>
           {categoryToEmoji(formProps.category)}
           <input
             type="text"
             value={formProps.title}
             name="title"
             onChange={handleChange}
-            className="grow"
+            className="min-w-0 w-full"
             autoCapitalize="true"
             autoComplete="off"
             placeholder="Type new budget name..."
@@ -114,19 +127,15 @@ export default function MonthlyBudgetItem({
           onChange={handleChange as any}
           style={{
             color:
-              formProps.category === CategoryType.Income ? "#16a34a" : "white",
+              getTransactionType(formProps) === TransactionType.Income ? "#16a34a" : "white",
           }}
-          className="w-48 h-full ml-1"
+          className={styles.category}
           required
         >
-          {Object.values(CategoryType).map((category) => (
-            <option key={category} value={category}>
-              {category}
-            </option>
-          ))}
+          <CategoryOptions />
         </select>
-        <div className="relative w-36 input">
-          <label className="date-picker-label text-white ml-[12px]">
+        <div className={styles.date}>
+          <label className="date-picker-label text-white">
             {formatDate(new Date(formProps.transactionDate))}
             <input
               className="picker"

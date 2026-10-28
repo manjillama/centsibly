@@ -1,3 +1,4 @@
+import { getTransactionType } from "./transactionTypes";
 import { ITransaction } from "@/interfaces/ITransaction";
 
 function escapeCell(value: unknown) {
@@ -7,13 +8,14 @@ function escapeCell(value: unknown) {
 
 export default function transactionsCsv(transactions: ITransaction[], currency?: string) {
   if (!transactions.length) return "";
-  const headers = ["title", "category", "amount", "date", ...(currency ? ["currency"] : [])];
+  const headers = ["title", "category", "amount", "date", ...(currency ? ["currency"] : []), "type"];
   const rows = transactions.map((transaction) => [
     transaction.title,
     transaction.category,
     transaction.amount,
     new Date(transaction.transactionDate).toISOString().split("T")[0],
     ...(currency ? [currency] : []),
+    getTransactionType(transaction),
   ].map(escapeCell).join(","));
   return [headers.join(","), ...rows].join("\n");
 }

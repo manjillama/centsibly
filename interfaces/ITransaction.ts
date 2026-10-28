@@ -1,12 +1,13 @@
 import mongoose, { ObjectId } from "mongoose";
-import { CategoryType } from "@/types";
+import { CategoryType, TransactionType } from "@/types";
 
 export interface ITransaction {
   _id: string;
   budget?: string | null;
   transactionDate: Date | string;
   title: string;
-  category: CategoryType | "";
+  category: string;
+  type?: TransactionType;
   amount: number | "";
   createdAt?: Date | string;
   updatedAt?: Date | string;

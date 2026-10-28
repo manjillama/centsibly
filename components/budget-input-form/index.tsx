@@ -1,6 +1,7 @@
 "use client";
 import { ITransaction } from "@/interfaces/ITransaction";
-import { CategoryType } from "@/types";
+import { TransactionType } from "@/types";
+import { typeForCategory, getTransactionType } from "@/utils/transactionTypes";
 import {
   categoryToEmoji,
   formatCurrency,
@@ -8,11 +9,14 @@ import {
   getNormalizedDate,
 } from "@/utils";
 import { useState } from "react";
+import styles from "./entry.module.css";
+import CategoryOptions from "./category-options";
 
 const INITIAL_FORM_PROPS = {
   _id: `${new Date().getTime()}`,
   title: "",
-  category: "" as "",
+  category: "",
+  type: TransactionType.Expense,
   amount: "" as "",
   transactionDate: getNormalizedDate(new Date()),
 };
@@ -28,7 +32,7 @@ export default function BudgetInputForm({
     useState<
       Pick<
         ITransaction,
-        "_id" | "title" | "category" | "amount" | "transactionDate"
+        "_id" | "title" | "category" | "type" | "amount" | "transactionDate"
       >
     >(INITIAL_FORM_PROPS);
   const [saving, setSaving] = useState(false);
@@ -36,6 +40,10 @@ export default function BudgetInputForm({
 
   function handleChange(event: React.FormEvent<HTMLInputElement>) {
     const { name, value } = event.currentTarget;
+    if (name === "category") {
+      setFormProps({ ...formProps, category: value, type: typeForCategory(value) });
+      return;
+    }
 
     setFormProps({
       ...formProps,
@@ -67,13 +75,14 @@ export default function BudgetInputForm({
     <div className="max-w-screen-xl	mx-auto px-4 pb-1">
       <form
         onSubmit={handleSubmit}
-        className="flex flex-wrap rounded-md space-x-4 py-1 pr-2 lg:w-4/5 -mx-4"
+        className={styles.form}
       >
-        <div className="ml-4 grow md:w-auto w-full flex items-center">
+        <div className={`${styles.field} ${styles.title}`}>
           {categoryToEmoji(formProps.category)}
           <input
             type="text"
             value={formProps.title}
+            aria-label="Transaction description"
             name="title"
             onChange={handleChange}
             className="grow"
@@ -83,55 +92,55 @@ export default function BudgetInputForm({
             required
           />
         </div>
-        <label className="flex items-center">
+        <label className={styles.field}>
           <span className="text-neutral-500 inline-block">
             {formatCurrency(currency)}
           </span>
-          <div className="-ml-1">
+          <div className="min-w-0 grow">
             <input
               type="text"
+              aria-label="Amount"
+              inputMode="decimal"
               name="amount"
               onChange={handleChange}
               value={formProps.amount}
-              className="w-48"
+              className="w-full"
               autoComplete="off"
               placeholder="Add amount..."
               required
             />
           </div>
         </label>
-        <div>
+        <div className={styles.field}>
           <select
             value={formProps.category}
+            aria-label="Category"
             name="category"
             onChange={handleChange as any}
             style={{
               color:
                 formProps.category === ""
                   ? "#a1a1aa"
-                  : formProps.category === CategoryType.Income
+                  : getTransactionType(formProps) === TransactionType.Income
                   ? "#16a34a"
                   : "white",
             }}
-            className="w-48 h-full ml-1"
+            className="w-full"
             required
           >
             <option value={""} className="text-neutral-500">
               Select category...
             </option>
-            {Object.values(CategoryType).map((category) => (
-              <option key={category} value={category}>
-                {category}
-              </option>
-            ))}
+            <CategoryOptions />
           </select>
         </div>
-        <div className="relative w-36 input">
-          <label className="date-picker-label text-white ml-[12px] h-[30px] flex items-center">
+        <div className={`${styles.field} ${styles.date}`}>
+          <label className="date-picker-label text-neutral-300">
             <span>{formatDate(new Date(formProps.transactionDate))}</span>
             <input
               className="picker"
               type="date"
+              aria-label="Transaction date"
               name="transactionDate"
               onChange={handleChange}
               value={formProps.transactionDate as string}
@@ -139,11 +148,11 @@ export default function BudgetInputForm({
             />
           </label>
         </div>
-        <div className="md:w-auto md:mt-0 w-full mt-2">
+        <div className="min-w-0">
           <button
             type="submit"
             disabled={saving}
-            className="py-2 px-6 block bg-sky-600 text-white rounded-lg hover:opacity-75 text-sm"
+            className={styles.submit}
           >
             {saving ? "Adding..." : "Add"}
           </button>

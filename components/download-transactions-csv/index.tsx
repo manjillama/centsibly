@@ -38,7 +38,7 @@ const DownloadTransactionsCsv = ({
       aria-label="Download CSV"
       onClick={downloadCSV}
       type="button"
-      className="hover:bg-neutral-600 border-[1px] border-neutral-600 w-[28px] h-[28px] rounded-md"
+      className="hover:bg-neutral-800 border border-neutral-700 text-neutral-400 hover:text-white w-8 h-8 rounded-lg transition-colors"
     >
       <svg
         className="mx-auto"

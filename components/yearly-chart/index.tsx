@@ -1,4 +1,6 @@
 "use client";
+import { getTransactionType } from "@/utils/transactionTypes";
+import { TransactionType } from "@/types";
 import { ITransaction } from "@/interfaces/ITransaction";
 import { formatCurrency, transformIndexToMonth } from "@/utils";
 import { useMemo } from "react";
@@ -17,18 +19,13 @@ export default function YearlyChart({
   const yearlyData = useMemo<Props>(() => {
     const monthlyTotalExpense = new Array(12).fill(0);
     const monthlyTotalIncome = new Array(12).fill(0);
+    const monthlySavings = new Array(12).fill(0);
 
     transactions.forEach((transaction) => {
       const currMonth = new Date(transaction.transactionDate).getUTCMonth();
-      if (transaction.category === "Income") {
-        monthlyTotalIncome[currMonth] = +(
-          monthlyTotalIncome[currMonth] + transaction.amount
-        ).toFixed(2);
-      } else {
-        monthlyTotalExpense[currMonth] = +(
-          monthlyTotalExpense[currMonth] + transaction.amount
-        ).toFixed(2);
-      }
+      const type = getTransactionType(transaction);
+      const series = type === TransactionType.Income ? monthlyTotalIncome : type === TransactionType.Savings ? monthlySavings : monthlyTotalExpense;
+      series[currMonth] = +(series[currMonth] + Number(transaction.amount)).toFixed(2);
     });
 
     return {
@@ -97,6 +94,7 @@ export default function YearlyChart({
         },
       },
       series: [
+        { name: "Set aside", data: monthlySavings },
         {
           name: "Expense",
           data: monthlyTotalExpense,

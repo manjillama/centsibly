@@ -17,3 +17,9 @@ export enum CategoryType {
   Miscellaneous = "Miscellaneous",
   Income = "Income",
 }
+
+export enum TransactionType {
+  Expense = "expense",
+  Income = "income",
+  Savings = "savings",
+}

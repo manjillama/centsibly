@@ -1,16 +1,16 @@
-import { getServerSession } from "next-auth";
-import React from "react";
-import { options } from "../api/auth/[...nextauth]/options";
 import BudgetWorkspace from "@/components/budget-workspace";
 import Greeting from "@/components/greeting";
+import styles from "./dashboard.module.css";
 
 export default async function DashboardPage() {
-  const session = await getServerSession(options);
-
   return (
-    <div className="container mx-auto px-[15px] py-4">
-      <Greeting />
+    <main className={styles.dashboard}>
+      <header className={styles.header}>
+        <p className={styles.eyebrow}>Your money, in focus</p>
+        <Greeting />
+        <p className={styles.description}>A little perspective for the everyday. A little space for your next plan.</p>
+      </header>
       <BudgetWorkspace />
-    </div>
+    </main>
   );
 }

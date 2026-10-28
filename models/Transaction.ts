@@ -1,7 +1,8 @@
 import { Schema } from "mongoose";
 import createModel from "@/lib/createModel";
 import { ITransactionDocument } from "@/interfaces/ITransaction";
-import { CategoryType } from "@/types";
+import { TransactionType } from "@/types";
+import { expenseCategories, incomeCategories, savingsCategories } from "@/utils/transactionTypes";
 
 const transactionSchema = new Schema<ITransactionDocument>(
   {
@@ -29,9 +30,10 @@ const transactionSchema = new Schema<ITransactionDocument>(
       type: Number,
       required: [true, "Missing transaction amount (amount)"],
     },
+    type: { type: String, enum: TransactionType },
     category: {
       type: String,
-      enum: CategoryType,
+      enum: [...expenseCategories, ...incomeCategories, ...savingsCategories],
       required: [true, "Missing transaction category (category)"],
     },
   },

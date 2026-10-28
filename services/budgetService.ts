@@ -1,3 +1,5 @@
+import { getTransactionType } from "@/utils/transactionTypes";
+import { TransactionType } from "@/types";
 import { isValidObjectId } from "mongoose";
 import { isCurrency } from "@/constants/currencies";
 import currencyService from "@/services/currencyService";
@@ -16,9 +18,10 @@ const requireUserBudget = async (id: string, userId: string) => {
 
 const getUserBudgets = async (userId: string) => {
   const budgets = await Budget.find({ user: userId }).sort({ createdAt: -1 }).lean();
-  const expenses = await Transaction.find({ user: userId, budget: { $in: budgets.map((budget) => budget._id) }, category: { $ne: "Income" } }).select("budget amount").lean();
+  const expenses = await Transaction.find({ user: userId, budget: { $in: budgets.map((budget) => budget._id) } }).select("budget amount type category").lean();
   const totals = new Map<string, number>();
   expenses.forEach((entry) => {
+    if (getTransactionType(entry) !== TransactionType.Expense) return;
     const id = String(entry.budget);
     totals.set(id, (totals.get(id) || 0) + Number(entry.amount));
   });

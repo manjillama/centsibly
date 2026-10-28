@@ -4,17 +4,19 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const ts = require('typescript');
 
-function load(file, mocks) {
+function load(file, mocks, named = false) {
   const code = ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, esModuleInterop: true } }).outputText;
   const exports = {};
   vm.runInNewContext(code, { exports, require: (id) => {
     if (!(id in mocks)) throw new Error(`Unexpected dependency: ${id}`);
     return mocks[id];
   } });
-  return exports.default;
+  return named ? exports : exports.default;
 }
+const types = load('types/index.ts', {}, true);
+const transactionTypes = load('utils/transactionTypes.ts', { '@/types': types }, true);
 class AppError extends Error { constructor(message, status) { super(message); this.status = status; } }
-const base = { '@/constants/currencies': { isCurrency: (value) => ['USD', 'EUR', 'MXN'].includes(value) }, '@/services/currencyService': { requireCurrency: async () => 'USD' }, '@/utils/appError': AppError, 'http-status-codes': { StatusCodes: { BAD_REQUEST: 400, NOT_FOUND: 404 } } };
+const base = { '@/types': types, '@/utils/transactionTypes': transactionTypes, '@/constants/currencies': { isCurrency: (value) => ['USD', 'EUR', 'MXN'].includes(value) }, '@/services/currencyService': { requireCurrency: async () => 'USD' }, '@/utils/appError': AppError, 'http-status-codes': { StatusCodes: { BAD_REQUEST: 400, NOT_FOUND: 404 } } };
 const budgetId = '123456789012345678901234';
 
 test('yearly query includes legacy/monthly records and excludes custom budgets', async () => {
@@ -150,10 +152,10 @@ test('transaction currency supplied by client is ignored; the budget defines the
 });
 
 test('CSV exports preserve yearly columns and include custom currency with escaped fields', () => {
-  const csv = load('utils/transactionsCsv.ts', {});
+  const csv = load('utils/transactionsCsv.ts', { './transactionTypes': transactionTypes });
   const entries = [{ title: 'Hotel, "Bali"\nNight 1', category: 'Travel', amount: 0, transactionDate: '2026-10-27T00:00:00.000Z' }];
-  assert.equal(csv(entries), 'title,category,amount,date\n"Hotel, ""Bali""\nNight 1",Travel,0,2026-10-27');
-  assert.equal(csv(entries, 'IDR'), 'title,category,amount,date,currency\n"Hotel, ""Bali""\nNight 1",Travel,0,2026-10-27,IDR');
+  assert.equal(csv(entries), 'title,category,amount,date,type\n"Hotel, ""Bali""\nNight 1",Travel,0,2026-10-27,expense');
+  assert.equal(csv(entries, 'IDR'), 'title,category,amount,date,currency,type\n"Hotel, ""Bali""\nNight 1",Travel,0,2026-10-27,IDR,expense');
   assert.equal(csv([], 'USD'), '');
 });
 
@@ -225,9 +227,9 @@ test('budget sidebar totals use only owned custom expenses', async () => {
     } },
     '@/models/Transaction': { find: (filter) => {
       assert.equal(filter.user, 'alice');
-      assert.equal(filter.category.$ne, 'Income');
+      assert.equal(filter.category, undefined);
       assert.deepEqual(Array.from(filter.budget.$in), [budgetId, 'second']);
-      return { select: () => ({ lean: async () => [{ budget: budgetId, amount: 20 }, { budget: budgetId, amount: 15.5 }] }) };
+      return { select: () => ({ lean: async () => [{ budget: budgetId, category: 'Travel', amount: 20 }, { budget: budgetId, category: 'Savings & Investments', amount: 15.5 }, { budget: budgetId, type: 'income', category: 'Salary', amount: 200 }, { budget: budgetId, category: 'Income', amount: 50 }, { budget: budgetId, type: 'savings', category: 'Emergency fund', amount: 100 }] }) };
     } },
   });
   const budgets = await service.getUserBudgets('alice');
@@ -255,4 +257,73 @@ test('archiving and restoring preserve budget data and require ownership', async
   assert.equal(document.target, 500);
   assert.equal(document.currency, 'MXN');
   assert.equal(saves, 2);
+});
+
+
+test('types preserve historical savings expenses and separate new savings from spending', () => {
+  const rows = [
+    { category: 'Income', amount: 1000 },
+    { category: 'Savings & Investments', amount: 100 },
+    { category: 'Food', amount: 50 },
+    { type: 'income', category: 'Freelance', amount: 200 },
+    { type: 'savings', category: 'Emergency fund', amount: 300 },
+  ];
+  const totals = transactionTypes.transactionTotals(rows);
+  assert.equal(totals.income, 1200);
+  assert.equal(totals.expenses, 150);
+  assert.equal(totals.savings, 300);
+  assert.equal(totals.remaining, 750);
+  assert.equal(transactionTypes.getTransactionType(rows[1]), 'expense');
+});
+
+test('creation and editing persist types and reject mismatched categories', async () => {
+  let created;
+  let saves = 0;
+  const document = { budget: budgetId, save: async function () { saves++; return this; } };
+  const service = load('services/transactionService.ts', { ...base,
+    '@/services/budgetService': { requireUserBudget: async () => ({}) },
+    '@/models/Transaction': {
+      create: async (data) => { created = data; return { ...data, _id: 'new' }; },
+      findOne: async () => document,
+    },
+  });
+  const entry = { title: 'Set aside', amount: 100, transactionDate: '2026-10-27', budget: budgetId };
+  for (const [type, category] of [['expense', 'Food'], ['income', 'Salary'], ['savings', 'Emergency fund']]) {
+    const result = await service.createTransaction({ ...entry, type, category }, 'alice');
+    assert.equal(created.type, type);
+    assert.equal(result.type, type);
+    await service.updateTransaction('entry', { ...entry, type, category }, 'alice');
+    assert.equal(document.type, type);
+    assert.equal(document.budget, budgetId);
+  }
+  for (const [type, category] of [['expense', 'Salary'], ['income', 'Food'], ['savings', 'Travel'], ['invalid', 'Food']]) {
+    await assert.rejects(service.createTransaction({ ...entry, type, category }, 'alice'), /valid transaction type/);
+    await assert.rejects(service.updateTransaction('entry', { ...entry, type, category }, 'alice'), /valid transaction type/);
+  }
+  assert.equal(saves, 3);
+  await service.updateTransaction('entry', { ...entry, category: 'Emergency fund' }, 'alice');
+  assert.equal(document.type, 'savings');
+  await service.createTransaction({ ...entry, category: 'Income' }, 'alice');
+  assert.equal(created.type, 'income');
+  await service.createTransaction({ ...entry, category: 'Savings & Investments' }, 'alice');
+  assert.equal(created.type, 'expense');
+});
+
+test('CSV includes inferred and explicit types while preserving existing column order', () => {
+  const csv = load('utils/transactionsCsv.ts', { './transactionTypes': transactionTypes });
+  const rows = [
+    { title: 'Pay', category: 'Income', amount: 1000, transactionDate: '2026-10-27' },
+    { title: 'Fund', category: 'Emergency fund', type: 'savings', amount: 100, transactionDate: '2026-10-27' },
+  ];
+  assert.equal(csv(rows, 'USD'), 'title,category,amount,date,currency,type\nPay,Income,1000,2026-10-27,USD,income\nFund,Emergency fund,100,2026-10-27,USD,savings');
+});
+
+
+test('one category choice determines type without reclassifying legacy savings expenses', () => {
+  for (const type of Object.values(types.TransactionType)) {
+    for (const category of transactionTypes.categoriesForType(type)) {
+      assert.equal(transactionTypes.typeForCategory(category), type);
+    }
+  }
+  assert.equal(transactionTypes.typeForCategory('Savings & Investments'), 'expense');
 });

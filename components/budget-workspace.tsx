@@ -59,7 +59,7 @@ export default function BudgetWorkspace() {
 
   return <>
     <div className="max-w-screen-xl mx-auto px-4 my-4">
-      <div className="flex flex-wrap items-center justify-between gap-x-6 border-b border-neutral-700">
+      <div className="flex flex-wrap items-center justify-between gap-x-6 border-b border-neutral-800">
       <div className="flex gap-6" role="tablist" aria-label="Budget view">
         {[["monthly", "Monthly budget"], ["custom", "Custom budgets"]].map(([value, label]) => (
           <button
@@ -82,8 +82,8 @@ export default function BudgetWorkspace() {
           >{label}</button>
         ))}
       </div>
-      <div className="text-sm text-neutral-400 flex items-center gap-2 py-3">
-        <span>Default currency: {settings.currency}</span>
+      <div className="text-xs text-neutral-400 flex items-center gap-2 py-3">
+        <span>Monthly currency: {settings.currency}</span>
         <span className="relative group">
           <button type="button" aria-label="About your default currency" aria-describedby="currency-help" className="border border-neutral-500 rounded-full w-5 h-5 text-xs focus-visible:outline focus-visible:outline-sky-500">?</button>
           <span id="currency-help" role="tooltip" className="hidden group-hover:block group-focus-within:block absolute right-0 top-full mt-2 w-64 p-3 rounded-lg bg-neutral-800 border border-neutral-600 text-neutral-200 shadow-lg z-20">Your default currency can’t be changed once set. To track expenses in another currency, create a custom budget and choose its currency.</span>

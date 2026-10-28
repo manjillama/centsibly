@@ -1,9 +1,10 @@
 import { ITransaction } from "@/interfaces/ITransaction";
-import { formatCurrency, getValidNumber, transformIndexToMonth } from "@/utils";
+import { formatCurrency, transformIndexToMonth } from "@/utils";
 import MonthlyBudgetItem from "../monthly-budget-item";
 import MonthlyChart from "../monthly-chart";
 import { useMemo } from "react";
-import { CategoryType } from "@/types";
+import { TransactionType } from "@/types";
+import { getTransactionType, transactionTotals } from "@/utils/transactionTypes";
 
 export default function MonthlyBudget({
   transactions,
@@ -19,7 +20,7 @@ export default function MonthlyBudget({
   const monthlyChartData = useMemo(() => {
     const dataMap = new Map();
     transactions.forEach((transaction) => {
-      if (transaction.category !== CategoryType.Income)
+      if (getTransactionType(transaction) === TransactionType.Expense)
         dataMap.set(
           transaction.category,
           +(
@@ -42,46 +43,30 @@ export default function MonthlyBudget({
 
   if (transactions.length <= 0) return null;
 
-  function getTotalExpense() {
-    return +transactions
-      .reduce((a, b) => {
-        return b.category !== CategoryType.Income
-          ? a + getValidNumber(b.amount)
-          : a;
-      }, 0)
-      .toFixed(2);
-  }
-  function getTotalIncome() {
-    return +transactions
-      .reduce((a, b) => {
-        return b.category === CategoryType.Income
-          ? a + getValidNumber(b.amount)
-          : a;
-      }, 0)
-      .toFixed(2);
-  }
+  const totals = transactionTotals(transactions);
 
   return (
-    <div className="mb-4 pt-4 pb-6">
-      <div className="mb-2 px-4">
-        <h3 className="text-white font-semibold">
+    <div className="mb-2 pt-7 pb-5 border-b border-neutral-800">
+      <div className="mb-5 px-4 flex flex-wrap items-center justify-between gap-2">
+        <h3 className="text-neutral-100 font-medium">
           {transformIndexToMonth(monthIndex)} {year}
         </h3>
-        <p className="text-neutral-500">
+        <p className="flex flex-wrap gap-x-4 gap-y-1 text-neutral-400 text-xs tabular-nums">
           <span>
-            Expense: {formatCurrency(currency)}
-            {getTotalExpense()}
+            Expenses: {formatCurrency(currency)}
+            {totals.expenses.toLocaleString(undefined, { maximumFractionDigits: 0 })}
           </span>
-          &nbsp;&nbsp;&nbsp;
           <span>
             Income: {formatCurrency(currency)}
-            {getTotalIncome()}
+            {totals.income.toLocaleString(undefined, { maximumFractionDigits: 0 })}
           </span>
+          <span>Set aside: {formatCurrency(currency)}{totals.savings.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+          <span>Remaining: {formatCurrency(currency)}{totals.remaining.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
         </p>
       </div>
       <div className="flex flex-wrap">
         <div className="lg:w-3/5 w-full lg:mb-0 mb-4">
-          {transactions
+          {[...transactions]
             .sort(
               (a, b) =>
                 (new Date(a.transactionDate) as any) -

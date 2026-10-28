@@ -56,7 +56,7 @@ function TransactionProvider({ children }: { children: React.ReactNode }) {
       transaction
     );
 
-    if (response.status !== "success") return;
+    if (response.status !== "success") throw new Error(response.message);
 
     const updatedTransactions = [...transactionData.transactions];
     updatedTransactions.push(response.data);

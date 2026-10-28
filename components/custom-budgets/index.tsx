@@ -2,7 +2,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { IBudget } from "@/interfaces/IBudget";
 import { ITransaction } from "@/interfaces/ITransaction";
-import { CategoryType } from "@/types";
+import { TransactionType } from "@/types";
+import { getTransactionType, transactionTotals } from "@/utils/transactionTypes";
 import api from "@/utils/api";
 import { formatCurrency } from "@/utils";
 import BudgetInputForm from "../budget-input-form";
@@ -32,6 +33,18 @@ export default function CustomBudgets({ defaultCurrency = "USD" }: { defaultCurr
   const [targetSaving, setTargetSaving] = useState(false);
   const [targetError, setTargetError] = useState("");
   const [renameError, setRenameError] = useState("");
+
+  useEffect(() => {
+    if (!titleSaved) return;
+    const timeout = setTimeout(() => setTitleSaved(false), 2000);
+    return () => clearTimeout(timeout);
+  }, [titleSaved]);
+
+  useEffect(() => {
+    if (!targetSaved) return;
+    const timeout = setTimeout(() => setTargetSaved(false), 2000);
+    return () => clearTimeout(timeout);
+  }, [targetSaved]);
 
   useEffect(() => {
     let active = true;
@@ -191,8 +204,9 @@ export default function CustomBudgets({ defaultCurrency = "USD" }: { defaultCurr
   const visibleBudgets = budgets.filter((budget) => !!budget.archived === showArchived && budget.name.toLowerCase().includes(search.trim().toLowerCase()));
   const target = budgets.find((budget) => budget._id === selected)?.target;
   const currency = budgets.find((budget) => budget._id === selected)?.currency || "USD";
-  const expense = transactions?.reduce((total, item) => total + (item.category !== CategoryType.Income ? Number(item.amount) : 0), 0) || 0;
-  const income = transactions?.reduce((total, item) => total + (item.category === CategoryType.Income ? Number(item.amount) : 0), 0) || 0;
+  const totals = transactionTotals(transactions ?? []);
+  const expense = totals.expenses;
+  const income = totals.income;
   useEffect(() => {
     if (transactions === null) return;
     setBudgets((current) => current.map((budget) => budget._id === selected ? { ...budget, spent: expense } : budget));
@@ -201,7 +215,7 @@ export default function CustomBudgets({ defaultCurrency = "USD" }: { defaultCurr
   const expenseChart = useMemo(() => {
     const totals = new Map<string, number>();
     transactions?.forEach((transaction) => {
-      if (transaction.category === CategoryType.Income) return;
+      if (getTransactionType(transaction) !== TransactionType.Expense) return;
       totals.set(transaction.category, (totals.get(transaction.category) || 0) + Number(transaction.amount));
     });
     const categories = Array.from(totals).filter(([, amount]) => amount > 0);
@@ -215,7 +229,7 @@ export default function CustomBudgets({ defaultCurrency = "USD" }: { defaultCurr
     <section className="max-w-screen-xl mx-auto px-4 pb-6 text-sm">
       <div className="flex flex-wrap justify-between items-start gap-4 mb-6">
         <div>
-          <h2 className="text-xl font-semibold">Custom budgets</h2>
+          <h2 className="text-lg font-medium tracking-tight">Custom budgets</h2>
           <p className="text-neutral-400 mt-1">A separate space for each trip or project.</p>
         </div>
         <button onClick={() => { setNewCurrency(defaultCurrency); setCreating(true); }} className="bg-sky-600 hover:bg-sky-500 rounded-lg px-4 py-2">+ New budget</button>
@@ -241,7 +255,7 @@ export default function CustomBudgets({ defaultCurrency = "USD" }: { defaultCurr
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-[220px_minmax(0,1fr)] gap-6 items-start">
-          <nav aria-label="Your custom budgets" className="border border-neutral-700 rounded-xl p-3">
+          <nav aria-label="Your custom budgets" className="border border-neutral-800 bg-neutral-800/20 rounded-xl p-3">
             <h3 className="px-3 py-2 text-xs uppercase tracking-wide text-neutral-400">Your budgets</h3>
             <div className="flex gap-1 px-1 mb-2" role="group" aria-label="Budget archive filter">
               {[false, true].map((archived) => <button key={String(archived)} type="button" aria-pressed={showArchived === archived} onClick={() => changeArchiveView(archived)} className={`flex-1 rounded-md px-2 py-2 text-xs ${showArchived === archived ? "bg-neutral-700 text-white" : "text-neutral-400"}`}>{archived ? "Archived" : "Active"} ({budgets.filter((budget) => !!budget.archived === archived).length})</button>)}
@@ -253,7 +267,7 @@ export default function CustomBudgets({ defaultCurrency = "USD" }: { defaultCurr
             </div>
           </nav>
           {!selected ? <p className="text-neutral-400 p-5">{showArchived ? "Archived budgets will appear here. You can restore them anytime." : "Select a budget or create a new one."}</p> : <div className="min-w-0" key={selected}>
-            <div className="border border-neutral-700 rounded-xl p-5 mb-5">
+            <div className="border border-neutral-800 bg-neutral-800/20 rounded-xl p-5 mb-5">
               <div className="flex justify-between items-start gap-4">
                 <div className="min-w-0 grow">
                   <h3 className="font-semibold text-2xl">
@@ -284,9 +298,11 @@ export default function CustomBudgets({ defaultCurrency = "USD" }: { defaultCurr
               </div>
               <p className="text-neutral-400 mt-2">Only transactions added here count toward this budget.</p>
               <span className="inline-block mt-3 rounded-full bg-neutral-800 px-3 py-1 text-xs text-neutral-300">{currency} · Separate from monthly budget · All dates</span>
-              {transactions !== null && <dl className="grid grid-cols-2 gap-4 mt-6 border-t border-neutral-700 pt-4">
+              {transactions !== null && <dl className="grid grid-cols-2 xl:grid-cols-4 gap-4 mt-6 border-t border-neutral-700 pt-4">
                 <div><dt className="text-neutral-400">Total spent</dt><dd className="text-2xl font-semibold mt-1">{formatCurrency(currency)}{expense.toFixed(2)}</dd></div>
                 <div><dt className="text-neutral-400">Total income</dt><dd className="text-2xl font-semibold mt-1">{formatCurrency(currency)}{income.toFixed(2)}</dd></div>
+                <div><dt className="text-neutral-400">Set aside</dt><dd className="text-2xl font-semibold mt-1">{formatCurrency(currency)}{totals.savings.toFixed(2)}</dd></div>
+                <div><dt className="text-neutral-400">Remaining</dt><dd className="text-2xl font-semibold mt-1">{formatCurrency(currency)}{totals.remaining.toFixed(2)}</dd></div>
               </dl>}
               <div className="mt-5 border-t border-neutral-700 pt-4">
                 <label htmlFor="budget-target" className="text-neutral-400">Spending target</label>
@@ -306,11 +322,11 @@ export default function CustomBudgets({ defaultCurrency = "USD" }: { defaultCurr
               </div>
             </div>
             {transactions === null ? <p>{error ? "Unable to load transactions. Choose another budget and try again." : "Loading transactions..."}</p> : <>
-              <div className="border-b border-neutral-700 py-2 mb-6">
+              <div className="border-y border-neutral-800 py-3 mb-6">
                 <BudgetInputForm currency={currency} addTransaction={addTransaction} />
               </div>
               <div>
-                <h4 className="font-semibold mb-3 px-4">Transactions <span className="text-neutral-500">({transactions.length})</span></h4>
+                <h4 className="font-medium mb-3 px-4 text-neutral-300">Transactions <span className="text-neutral-500">({transactions.length})</span></h4>
                 {transactions.length === 0 ? <p className="rounded-xl bg-neutral-800/50 p-6 text-neutral-400">No transactions yet. Add your first expense using the form above.</p> : <>
                   <div className="flex flex-wrap">
                     <div className="lg:w-3/5 w-full lg:mb-0 mb-4">

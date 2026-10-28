@@ -66,11 +66,14 @@ const MonthlyChart = memo(
     }, []);
 
     return (
-      <ReactApexChart
-        options={chartOptions}
-        series={JSON.parse(series)}
-        type="donut"
-      />
+      <div className="w-full max-w-[420px] mx-auto">
+        <ReactApexChart
+          options={chartOptions}
+          series={JSON.parse(series)}
+          type="donut"
+          width="100%"
+        />
+      </div>
     );
   }
 );

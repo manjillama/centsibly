@@ -1,3 +1,5 @@
+import { categoriesForType, getTransactionType } from "@/utils/transactionTypes";
+import { TransactionType } from "@/types";
 import { ITransaction } from "@/interfaces/ITransaction";
 import Transaction from "@/models/Transaction";
 import AppError from "@/utils/appError";
@@ -23,14 +25,23 @@ const getUserTransactionsByYear = async (
   );
 };
 
+function validateType(data: ITransaction) {
+  const type = getTransactionType(data);
+  if (!Object.values(TransactionType).includes(type) || !categoriesForType(type).includes(data.category))
+    throw new AppError("Choose a valid transaction type and category", StatusCodes.BAD_REQUEST);
+  return type;
+}
+
 const createTransaction = async (data: ITransaction, userId: string) => {
   await currencyService.requireCurrency(userId);
   if (data.budget) await budgetService.requireUserBudget(data.budget, userId);
+  const type = validateType(data);
   const { transactionDate, title, category, amount } = data;
   const transaction = await Transaction.create({
     transactionDate,
     title,
     category,
+    type,
     amount,
     user: userId,
     budget: data.budget || null,
@@ -41,6 +52,7 @@ const createTransaction = async (data: ITransaction, userId: string) => {
     transactionDate,
     title,
     category,
+    type,
     amount,
   };
 };
@@ -62,11 +74,13 @@ const updateTransaction = async (
       StatusCodes.NOT_FOUND
     );
 
+  const type = validateType({ ...data, type: data.type ?? (data.category === transaction.category ? transaction.type : undefined) });
   const { transactionDate, title, category, amount } = data;
 
   transaction.transactionDate = transactionDate;
   transaction.title = title;
   transaction.category = category;
+  transaction.type = type;
   transaction.amount = amount;
 
   return transaction.save();
