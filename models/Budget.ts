@@ -12,7 +12,7 @@ interface BudgetDocument extends Document {
 
 const budgetSchema = new Schema<BudgetDocument>(
   {
-    currency: { type: String, enum: CURRENCIES, default: "USD", immutable: true },
+    currency: { type: String, enum: CURRENCIES, default: "USD" },
     archived: { type: Boolean, default: false },
     target: { type: Number, min: 0.01, default: null },
     name: { type: String, required: true, trim: true, maxlength: 100 },

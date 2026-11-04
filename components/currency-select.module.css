@@ -1,0 +1,7 @@
+.wrapper { position: relative; display: inline-flex; max-width: 100%; }
+.wrapper .select { width: 100%; min-height: 42px; appearance: none; cursor: pointer; border: 1px solid #737373; border-radius: 8px; background: #262626; padding: 8px 36px 8px 12px; color: #f5f5f5; }
+.wrapper .select:hover { border-color: #a3a3a3; }
+.wrapper .select:focus-visible { outline: 2px solid #38bdf8; outline-offset: 2px; }
+.wrapper .select:disabled { opacity: .5; cursor: wait; }
+.chevron { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); pointer-events: none; color: #d4d4d4; }
+@media (min-width: 640px) { .wrapper .select { font-size: 14px; } }

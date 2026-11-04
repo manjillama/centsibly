@@ -366,3 +366,47 @@ test('overlapping savings category is hidden from new entries while existing rec
   await service.updateTransaction('legacy', { category: 'Savings & Investments', type: 'savings', amount: 120, title: 'Savings', transactionDate: '2026-10-27' }, 'alice');
   assert.equal(document.type, 'savings');
 });
+
+test('custom budget currency changes validate ownership and preserve numeric amounts', async () => {
+  let saves = 0;
+  const document = { _id: budgetId, name: 'Trip', currency: 'MXN', target: 500, user: 'alice', save: async function () { saves++; return this; } };
+  const service = load('services/budgetService.ts', { ...base,
+    mongoose: { isValidObjectId: (id) => /^[a-f0-9]{24}$/.test(id) },
+    '@/models/Budget': { findOne: async (query) => query._id === budgetId && query.user === 'alice' ? document : null },
+    // No transaction writes are needed: amounts retain their original numeric values.
+    '@/models/Transaction': {},
+  });
+  for (const currency of ['INVALID', '', null, 123]) {
+    await assert.rejects(service.setBudgetCurrency(budgetId, currency, 'alice'), /supported currency/);
+  }
+  await assert.rejects(service.setBudgetCurrency(budgetId, 'EUR', 'bob'), /Budget not found/);
+  await assert.rejects(service.setBudgetCurrency('invalid', 'EUR', 'alice'), /Invalid budget id/);
+  assert.equal(saves, 0);
+  const result = await service.setBudgetCurrency(budgetId, 'EUR', 'alice');
+  assert.equal(result.currency, 'EUR');
+  assert.equal(result.target, 500);
+  assert.equal(result.name, 'Trip');
+  assert.equal(result.user, 'alice');
+  assert.equal(saves, 1);
+});
+
+test('persisted custom budgets accept currency changes through the actual Mongoose schema', async () => {
+  const mongoose = require('mongoose');
+  const Budget = load('models/Budget.ts', {
+    mongoose,
+    '@/constants/currencies': { CURRENCIES: ['USD', 'EUR', 'MXN'] },
+    '@/lib/createModel': (_name, schema) => mongoose.model('BudgetCurrencyRegression', schema),
+  });
+  try {
+    const budget = Budget.hydrate({ _id: budgetId, name: 'Trip', user: new mongoose.Types.ObjectId(), currency: 'USD', target: 500 });
+    budget.currency = 'EUR';
+    assert.equal(budget.currency, 'EUR');
+    assert.equal(budget.isModified('currency'), true);
+    await budget.validate();
+    assert.equal(budget.target, 500);
+    budget.currency = 'INVALID';
+    await assert.rejects(budget.validate(), /not a valid enum value/);
+  } finally {
+    mongoose.deleteModel('BudgetCurrencyRegression');
+  }
+});

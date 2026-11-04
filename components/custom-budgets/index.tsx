@@ -11,6 +11,7 @@ import MonthlyBudgetItem from "../monthly-budget-item";
 import CurrencySelect from "../currency-select";
 import DownloadTransactionsCsv from "../download-transactions-csv";
 import MonthlyChart from "../monthly-chart";
+import BudgetCurrency from "./budget-currency";
 
 export default function CustomBudgets({ defaultCurrency = "USD" }: { defaultCurrency?: string }) {
   const [search, setSearch] = useState("");
@@ -235,14 +236,21 @@ export default function CustomBudgets({ defaultCurrency = "USD" }: { defaultCurr
       </div>
       {creating && (
         <form onSubmit={createBudget} className="bg-neutral-800 border border-neutral-700 rounded-xl p-5 mb-6">
-          <label htmlFor="budget-name" className="block font-medium mb-2">Name your budget</label>
-          <div className="flex flex-wrap gap-3">
-            <input id="budget-name" autoFocus className="grow rounded-lg bg-neutral-900" placeholder="e.g. Bali trip" value={name} onChange={(event) => setName(event.target.value)} required maxLength={100} />
-            <CurrencySelect value={newCurrency} onChange={setNewCurrency} />
-            <button disabled={saving || !name.trim()} className="bg-sky-600 rounded-lg px-4 py-2 disabled:opacity-50">{saving ? "Creating..." : "Create budget"}</button>
-            <button type="button" disabled={saving} onClick={() => setCreating(false)} className="px-3 py-2 text-neutral-300">Cancel</button>
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,320px)_auto] items-end gap-3">
+            <div className="min-w-0">
+              <label htmlFor="budget-name" className="block text-xs text-neutral-400 mb-2">Name your budget</label>
+              <input id="budget-name" autoFocus className="w-full h-[42px] min-w-0 rounded-lg bg-neutral-900" placeholder="e.g. Bali trip" value={name} onChange={(event) => setName(event.target.value)} required maxLength={100} />
+            </div>
+            <div className="min-w-0 [&>span]:w-full">
+              <label htmlFor="new-budget-currency" className="block text-xs text-neutral-400 mb-2">Currency</label>
+              <CurrencySelect id="new-budget-currency" value={newCurrency} onChange={setNewCurrency} disabled={saving} />
+            </div>
+            <div className="flex items-center gap-3 sm:col-span-2 xl:col-span-1">
+              <button disabled={saving || !name.trim()} className="h-[42px] bg-sky-600 rounded-lg px-4 whitespace-nowrap disabled:opacity-50">{saving ? "Creating..." : "Create budget"}</button>
+              <button type="button" disabled={saving} onClick={() => setCreating(false)} className="h-[42px] px-3 text-neutral-300">Cancel</button>
+            </div>
           </div>
-          <p className="text-neutral-400 mt-3">Currency is fixed once this budget is created. All its transactions use the same currency.</p>
+          <p className="text-neutral-400 mt-3">All transactions in this budget use the same currency. You can change it later; amounts won’t be converted.</p>
         </form>
       )}
       {error && <p role="alert" className="text-red-400 mb-4">{error}</p>}
@@ -295,13 +303,16 @@ export default function CustomBudgets({ defaultCurrency = "USD" }: { defaultCurr
                 {transactions !== null && <DownloadTransactionsCsv transactions={transactions} currency={currency} filename={`${(budgets.find((budget) => budget._id === selected)?.name || "budget").replace(/[^a-z0-9_-]+/gi, "-")}-${currency}.csv`} />}
                 </div>
               </div>
-              <p className="text-neutral-400 mt-2">Expenses added here count toward your spending target.</p>
-              <span className="inline-block mt-3 rounded-full bg-neutral-800 px-3 py-1 text-xs text-neutral-300">{currency} · Separate from monthly budget · All dates</span>
-              {transactions !== null && <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6 border-t border-neutral-700 pt-4">
+              <div className="mt-2">
+                <BudgetCurrency key={selected} budgetId={selected} currency={currency} onSaved={(updated) => {
+                  setBudgets((current) => current.map((budget) => budget._id === updated._id ? { ...budget, ...updated } : budget));
+                }} />
+              </div>
+              {transactions !== null && <dl className="grid grid-cols-2 gap-4 mt-4 border-t border-neutral-700 pt-3">
                 <div><dt className="text-neutral-400">Spent</dt><dd className="text-2xl font-medium mt-1">{formatCurrency(currency)}{expense.toLocaleString(undefined, { maximumFractionDigits: 0 })}</dd></div>
                 {target != null && <div><dt className="text-neutral-400">{expense > target ? "Over target" : "Remaining"}</dt><dd className={`text-2xl font-medium mt-1 ${expense > target ? "text-red-400" : "text-sky-300"}`}>{formatCurrency(currency)}{Math.abs(target - expense).toLocaleString(undefined, { maximumFractionDigits: 0 })}</dd></div>}
               </dl>}
-              <div className="mt-5 border-t border-neutral-700 pt-4">
+              <div className="mt-3 border-t border-neutral-700 pt-3">
                 <label htmlFor="budget-target" className="text-neutral-400">Spending target</label>
                 <div className="flex items-center mt-1">
                   <span className="text-neutral-500 inline-block">{formatCurrency(currency)}</span>

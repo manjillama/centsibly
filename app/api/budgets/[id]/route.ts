@@ -21,5 +21,7 @@ export const PATCH = catchAsync(async (req, { params }: { params: { id: string }
   const body = await req.json();
   return Response.json({ status: "success", data: body && Object.prototype.hasOwnProperty.call(body, "archived")
     ? await budgetService.setBudgetArchived(params.id, body.archived, session.user.id as string)
+    : body && Object.prototype.hasOwnProperty.call(body, "currency")
+    ? await budgetService.setBudgetCurrency(params.id, body.currency, session.user.id as string)
     : await budgetService.setBudgetTarget(params.id, body?.target, session.user.id as string) });
 });

@@ -49,6 +49,13 @@ const renameBudget = async (id: string, name: unknown, userId: string) => {
   return budget.save();
 };
 
+const setBudgetCurrency = async (id: string, currency: unknown, userId: string) => {
+  if (!isCurrency(currency)) throw new AppError("Choose a supported currency", StatusCodes.BAD_REQUEST);
+  const budget = await requireUserBudget(id, userId);
+  budget.currency = currency;
+  return budget.save();
+};
+
 const setBudgetTarget = async (id: string, target: unknown, userId: string) => {
   if (target !== null && (typeof target !== "number" || !Number.isFinite(target) || target <= 0))
     throw new AppError("Enter a target greater than zero", StatusCodes.BAD_REQUEST);
@@ -65,4 +72,4 @@ const setBudgetArchived = async (id: string, archived: unknown, userId: string) 
   return budget.save();
 };
 
-export default { setBudgetArchived, setBudgetTarget, requireUserBudget, getUserBudgets, createBudget, getBudgetTransactions, renameBudget };
+export default { setBudgetCurrency, setBudgetArchived, setBudgetTarget, requireUserBudget, getUserBudgets, createBudget, getBudgetTransactions, renameBudget };
